@@ -1,0 +1,7 @@
+<div class="switcher-bar">
+  @for (p of perspectives; track p.id) {
+    <button [class.active]="currentPerspective() === p.id" (click)="setPerspective(p.id)">
+      {{ p.label }}
+    </button>
+  }
+</div>
