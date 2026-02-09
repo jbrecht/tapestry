@@ -4,65 +4,30 @@ import { computed } from '@angular/core';
 export type PerspectiveType = 'abstract' | 'map' | 'timeline' | 'family-tree' | 'ledger';
 
 export interface TapestryNode {
-  id: string;               // Unique UUID
-  label: string;            // The "Name" (e.g., "Drakkenheim")
-  type: string;             // Broad category: 'Person', 'Place', 'Thing', 'Event'
-  
-  // AI-managed metadata
-  metadata: {
-    lastUpdated: number;    // Unix timestamp
-    confidence: number;     // 0-1 (How certain is the AI about this node?)
-    isOrphaned: boolean;    // Derived: True if it has no edges
-  };
-
-  // The "Flex" Data - This powers the Perspectives
+  id: string;
+  label: string;
+  type: 'Person' | 'Place' | 'Thing' | 'Event';
+  description: string | null;
   attributes: {
-    description?: string;
-    
-    // For Map Perspective
-    coordinates?: { x: number; y: number }; 
-    locationType?: 'city' | 'region' | 'point-of-interest';
-
-    // For Timeline Perspective
-    timestamp?: string;      // ISO string or a custom world-date string
-    epoch?: string;          // e.g., "The Age of Fire"
-
-    // For Table/Ledger Perspective
-    [key: string]: any;      // Catch-all for custom user-defined properties
+    coordinates?: { x: number; y: number };
+    timestamp?: string;
+    locationType?: string;
+    extraInfo?: string | null;
+    [key: string]: any;
   };
 }
 
 export interface TapestryEdge {
   id: string;
-  sourceId: string;         // The ID of the "From" Node
-  targetId: string;         // The ID of the "To" Node
-  
-  // The semantic meaning of the connection
-  predicate: string;        // e.g., 'SPOUSE_OF', 'LOCATED_IN', 'PARTICIPATED_IN'
-  
-  // Meta-info about the link
-  metadata: {
-    strength: number;       // 0-1 (Weighting for the Force-Directed Graph)
-    isDirected: boolean;    // Is this a one-way or two-way street?
-    isSecret?: boolean;     // Useful for DM/Writing modes
-  };
-
-  attributes: {
-    since?: string;         // When the relationship began
-    description?: string;   // "They met at the tavern in 1922"
-    [key: string]: any;
-  };
+  sourceId: string;
+  targetId: string;
+  predicate: string;
 }
 
-export interface Message {
+export interface ChatMessage {
+  role: 'user' | 'assistant';
   content: string;
-  timestamp: Date;
-}
-
-export interface TapestryState {
-  nodes: TapestryNode[];
-  edges: TapestryEdge[];
-  messages: Message[]; // For chat history
+  timestamp: number;
 }
 
 export const TapestryStore = signalStore(
@@ -70,45 +35,37 @@ export const TapestryStore = signalStore(
   withState({
     nodes: [] as TapestryNode[],
     edges: [] as TapestryEdge[],
-    messages: [] as Message[],
+    messages: [] as ChatMessage[],
     activePerspective: 'abstract' as PerspectiveType,
     isLoading: false,
   }),
   withComputed(({ nodes, edges }) => ({
-    // Derived state for the Timeline perspective
+    // Perspective Helpers
+    mapNodes: computed(() => nodes().filter(n => !!n.attributes.coordinates)),
     timelineNodes: computed(() => 
-      nodes().filter(n => !!n.attributes.timestamp)
-             .sort((a, b) => compareDates(a.attributes.timestamp, b.attributes.timestamp))
+      nodes()
+        .filter(n => !!n.attributes.timestamp)
+        .sort((a, b) => (a.attributes.timestamp || '').localeCompare(b.attributes.timestamp || ''))
     ),
-    // Derived state for the Map perspective
-    mapNodes: computed(() => 
-      nodes().filter(n => !!n.attributes.coordinates)
-    )
+    // World Stats (Fun for the UI)
+    nodeCount: computed(() => nodes().length),
+    edgeCount: computed(() => edges().length),
+    isWorldEmpty: computed(() => nodes().length === 0)
   })),
   withMethods((store) => ({
-    addNode(node: TapestryNode) {
-      patchState(store, (state) => ({ nodes: [...state.nodes, node] }));
-    },
-    addEdge(edge: TapestryEdge) {
-      patchState(store, (state) => ({ edges: [...state.edges, edge] }));
-    },
-    addMessage(message: string) {
-      patchState(store, (state) => ({
-        messages: [...state.messages, { content: message, timestamp: new Date() }]
-      }));
-    },
-    updatePerspective(type: PerspectiveType) {
-      patchState(store, { activePerspective: type });
-    },
     updateGraph(nodes: TapestryNode[], edges: TapestryEdge[]) {
       patchState(store, { nodes, edges });
+    },
+    addChatMessage(role: 'user' | 'assistant', content: string) {
+      patchState(store, (state) => ({
+        messages: [...state.messages, { role, content, timestamp: Date.now() }]
+      }));
+    },
+    setPerspective(activePerspective: PerspectiveType) {
+      patchState(store, { activePerspective });
+    },
+    setLoading(isLoading: boolean) {
+      patchState(store, { isLoading });
     }
   }))
 );
-
-function compareDates(a: string | undefined, b: string | undefined): number {
-  if (!a && !b) return 0;
-  if (!a) return 1;
-  if (!b) return -1;
-  return a.localeCompare(b);
-}
