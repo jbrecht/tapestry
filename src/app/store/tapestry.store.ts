@@ -99,6 +99,9 @@ export const TapestryStore = signalStore(
     },
     updatePerspective(type: PerspectiveType) {
       patchState(store, { activePerspective: type });
+    },
+    updateGraph(nodes: TapestryNode[], edges: TapestryEdge[]) {
+      patchState(store, { nodes, edges });
     }
   }))
 );
