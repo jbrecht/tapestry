@@ -1,0 +1,20 @@
+:host {
+  display: block;
+  height: 100vh;
+  overflow: hidden;
+}
+.split-view {
+  display: flex;
+  height: 100%;
+}
+.left-pane {
+  flex: 1;
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+}
+.right-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}

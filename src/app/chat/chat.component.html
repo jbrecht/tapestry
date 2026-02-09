@@ -1,0 +1,11 @@
+<div class="chat-container">
+  <div class="messages">
+    @for (msg of store.messages(); track $index) {
+      <div class="message">{{ msg }}</div>
+    }
+  </div>
+  <div class="input-area">
+    <input [formControl]="messageControl" (keydown.enter)="sendMessage()" placeholder="Type a message..." />
+    <button (click)="sendMessage()">Send</button>
+  </div>
+</div>
