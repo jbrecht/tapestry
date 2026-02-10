@@ -1,6 +1,6 @@
 <div class="chat-container">
   <div class="message-list">
-    @for (msg of chatHistory(); track $index) {
+    @for (msg of store.messages(); track $index) {
       <div class="message" [class]="msg.role">
         <span class="label">{{ msg.role === 'user' ? 'You' : 'Loom' }}</span>
         <p>{{ msg.content }}</p>

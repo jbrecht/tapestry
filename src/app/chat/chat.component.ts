@@ -15,14 +15,14 @@ import { of } from 'rxjs';
   styleUrl: './chat.component.scss'
 })
 export class ChatComponent {
-  private store = inject(TapestryStore);
+  protected store = inject(TapestryStore);
   private http = inject(HttpClient);
 
   // Local UI State
   userInput = signal('');
   // Pending message to be sent
+  // Pending message to be sent
   pendingMessage = signal<{ text: string, id: number } | null>(null);
-  chatHistory = signal<{ role: 'user' | 'assistant', content: string }[]>([]);
 
   /**
    * The Loom Resource
@@ -37,7 +37,7 @@ export class ChatComponent {
         message: pm.text,
         nodes: this.store.nodes(),
         edges: this.store.edges(),
-        history: this.chatHistory()
+        history: this.store.messages().map(m => ({ role: m.role, content: m.content }))
       };
     },
     stream: ({params: req}) => {
@@ -55,11 +55,10 @@ export class ChatComponent {
         // Update the Shared Graph State
         this.store.updateGraph(result.nodes, result.edges);
 
-        // Update local chat UI
-        this.chatHistory.update(h => [
-          ...h, 
-          { role: 'assistant', content: result.reply }
-        ]);
+        // Update local chat UI - Save to Store!
+        this.store.addChatMessage('assistant', result.reply);
+        
+        // Reset input for next turn
         
         // Reset input for next turn
         this.userInput.set('');
@@ -73,8 +72,8 @@ export class ChatComponent {
     if (!val) return;
 
     // 1. Log the user's thought
+    // 1. Log the user's thought
     this.store.addChatMessage('user', val);
-    this.chatHistory.update(h => [...h, { role: 'user', content: val }]);
     this.store.setLoading(true);
 
     // 2. Trigger the resource via pendingMessage

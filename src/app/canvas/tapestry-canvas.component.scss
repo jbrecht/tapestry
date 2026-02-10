@@ -1,33 +1,114 @@
-:host {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-  background: #f0f0f0;
-}
-
 .canvas-container {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   position: relative;
-}
-
-h2 {
-    margin: 10px;
-    flex-shrink: 0;
+  width: 100%;
+  height: 600px; /* Fixed height to prevent infinite loop */
+  border: 1px solid #ccc;
+  overflow: hidden;
 }
 
 canvas {
   display: block;
+  flex: 1; /* Fill remaining space */
   width: 100%;
-  height: 100%;
-  outline: none;
+  min-height: 0; /* Allow flex shrinking */
 }
 
-.canvas-placeholder {
-  display: none; // Hide the placeholder text
+/* Shared Tooltip Base */
+%tooltip-base {
+  position: absolute;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  padding: 8px;
+  pointer-events: none; /* Let mouse events pass through to canvas */
+  z-index: 10;
+  max-width: 250px;
+  font-family: sans-serif;
+  font-size: 13px;
+}
+
+.node-tooltip {
+  @extend %tooltip-base;
+
+  .tooltip-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+
+    .node-type {
+      font-size: 10px;
+      padding: 2px 4px;
+      border-radius: 3px;
+      color: white;
+      font-weight: bold;
+      text-transform: uppercase;
+
+      &.Person { background-color: #ff7f0e; }
+      &.Place { background-color: #2ca02c; }
+      &.Event { background-color: #d62728; }
+      &.Thing { background-color: #1f77b4; }
+    }
+
+    .node-label {
+      font-weight: bold;
+    }
+  }
+
+  .node-description {
+    color: #666;
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+
+  .node-attributes {
+    font-size: 12px;
+    color: #444;
+
+    .attribute-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 2px;
+
+      .attr-key {
+        font-weight: 500;
+        color: #888;
+      }
+    }
+  }
+}
+
+.edge-tooltip {
+  @extend %tooltip-base;
+  
+  .relationship {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+
+    .node-name {
+      font-weight: bold;
+      color: #333;
+    }
+
+    .predicate {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-family: monospace;
+      color: #555;
+    }
+
+    .arrow {
+      color: #999;
+    }
+  }
 }

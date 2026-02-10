@@ -1,4 +1,44 @@
 <div class="canvas-container">
   <h2>Tapestry Canvas</h2>
   <canvas #graphCanvas width="800" height="600"></canvas>
+
+  @if (hoveredNode(); as node) {
+    <div class="node-tooltip" [style.left.px]="mousePosition.x + 15" [style.top.px]="mousePosition.y + 15">
+      <div class="tooltip-header">
+        <span class="node-type" [class]="node.type">{{ node.type }}</span>
+        <span class="node-label">{{ node.label }}</span>
+      </div>
+      @if (node.description) {
+        <div class="node-description">{{ node.description }}</div>
+      }
+      @if (node.attributes && (node.attributes | keyvalue).length > 0) {
+        <div class="node-attributes">
+          @for (attr of node.attributes | keyvalue; track attr.key) {
+             @if (attr.key !== 'coordinates' && attr.key !== 'color') {
+                <div class="attribute-row">
+                  <span class="attr-key">{{ attr.key }}:</span>
+                  <span class="attr-value">{{ attr.value }}</span>
+                </div>
+             }
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (hoveredEdge(); as edge) {
+    <!-- We can cast source/target to any to access the node properties since D3 replaces them with objects -->
+    @let sourceNode = $any(edge.source);
+    @let targetNode = $any(edge.target);
+
+    <div class="edge-tooltip" [style.left.px]="mousePosition.x + 15" [style.top.px]="mousePosition.y + 15">
+      <div class="relationship">
+         <span class="node-name">{{ sourceNode.label }}</span>
+         <span class="arrow">→</span>
+         <span class="predicate">{{ edge.predicate }}</span>
+         <span class="arrow">→</span>
+         <span class="node-name">{{ targetNode.label }}</span>
+      </div>
+    </div>
+  }
 </div>
