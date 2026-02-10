@@ -20,6 +20,8 @@ export class ChatComponent {
 
   // Local UI State
   userInput = signal('');
+  // Pending message to be sent
+  pendingMessage = signal<{ text: string, id: number } | null>(null);
   chatHistory = signal<{ role: 'user' | 'assistant', content: string }[]>([]);
 
   /**
@@ -28,11 +30,11 @@ export class ChatComponent {
    */
   loomResource = rxResource({
     params: () => {
-      const msg = this.userInput();
-      if (!msg) return null;
+      const pm = this.pendingMessage();
+      if (!pm) return null;
 
       return {
-        message: msg,
+        message: pm.text,
         nodes: this.store.nodes(),
         edges: this.store.edges(),
         history: this.chatHistory()
@@ -61,18 +63,21 @@ export class ChatComponent {
         
         // Reset input for next turn
         this.userInput.set('');
+        this.pendingMessage.set(null);
       }
     });
   }
 
   onSend() {
     const val = this.userInput().trim();
-    if (!val || this.loomResource.isLoading()) return;
+    if (!val) return;
 
-    // 1. Add user message to UI immediately
+    // 1. Log the user's thought
+    this.store.addChatMessage('user', val);
     this.chatHistory.update(h => [...h, { role: 'user', content: val }]);
-    
-    // 2. The resource handles the HTTP call automatically 
-    // because we updated the value that 'request' depends on.
+    this.store.setLoading(true);
+
+    // 2. Trigger the resource via pendingMessage
+    this.pendingMessage.set({ text: val, id: Date.now() });
   }
 }

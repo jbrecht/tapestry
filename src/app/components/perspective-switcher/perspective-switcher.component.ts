@@ -19,6 +19,6 @@ export class PerspectiveSwitcherComponent {
   ];
 
   setPerspective(id: any) {
-    this.store.updatePerspective(id);
+    this.store.setPerspective(id);
   }
 }
