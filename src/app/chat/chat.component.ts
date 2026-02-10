@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect } from '@angular/core';
+import { Component, inject, signal, effect, ViewChild, ElementRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TapestryStore } from '../store/tapestry.store';
 import { HttpClient } from '@angular/common/http';
@@ -17,6 +17,8 @@ import { of } from 'rxjs';
 export class ChatComponent {
   protected store = inject(TapestryStore);
   private http = inject(HttpClient);
+
+  @ViewChild('messageList') messageList!: ElementRef<HTMLDivElement>;
 
   // Local UI State
   userInput = signal('');
@@ -65,6 +67,22 @@ export class ChatComponent {
         this.pendingMessage.set(null);
       }
     });
+
+    // Effect to scroll to bottom when messages change
+    effect(() => {
+        const messages = this.store.messages();
+        // Use setTimeout to allow DOM to update
+        setTimeout(() => {
+            this.scrollToBottom();
+        }, 50);
+    });
+  }
+
+  private scrollToBottom() {
+      if (this.messageList) {
+          const el = this.messageList.nativeElement;
+          el.scrollTop = el.scrollHeight;
+      }
   }
 
   onSend() {

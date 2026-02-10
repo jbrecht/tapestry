@@ -43,6 +43,9 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  // ... imports
+  private transform: d3.ZoomTransform = d3.zoomIdentity;
+
   ngAfterViewInit() {
     const canvas = this.canvasRef()?.nativeElement;
     if (!canvas) return;
@@ -61,15 +64,30 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
             canvas.width = this.width;
             canvas.height = this.height;
             if (this.simulation) {
-                this.simulation.force('center', d3.forceCenter(this.width / 2, this.height / 2));
+                this.simulation.force('x', d3.forceX(this.width / 2).strength(0.05));
+                this.simulation.force('y', d3.forceY(this.height / 2).strength(0.05));
                 this.simulation.alpha(1).restart();
             }
+            this.draw(); // Redraw on resize
         }
       });
     });
     this.resizeObserver.observe(canvas); // Observe the canvas directly
 
+    // Setup Zoom
+    const zoomBehavior = d3.zoom<HTMLCanvasElement, unknown>()
+        .scaleExtent([0.1, 8])
+        .on('zoom', (event) => {
+            this.transform = event.transform;
+            this.draw();
+        });
+
+    d3.select(canvas).call(zoomBehavior);
+
     // Add mouse event listeners
+    // Note: d3-zoom handles mouse events for zooming/panning, but we still need our own for hover effects.
+    // However, d3-zoom consumes some events. We might need to listen to 'mousemove' on the canvas still, 
+    // but we need to be careful about coordinate systems.
     canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
     canvas.addEventListener('mouseout', this.onMouseOut.bind(this));
 
@@ -95,18 +113,23 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
   private onMouseMove(event: MouseEvent) {
     if (!this.simulation) return;
 
+    // We can't simply take clientX/Y because d3-zoom might be active.
+    // But we are listening to native mousemove.
     const rect = this.canvasRef()!.nativeElement.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const clientX = event.clientX - rect.left;
+    const clientY = event.clientY - rect.top;
     
-    this.mousePosition = { x, y };
+    // Apply inverse transform to get world coordinates
+    const worldX = (clientX - this.transform.x) / this.transform.k;
+    const worldY = (clientY - this.transform.y) / this.transform.k;
+    
+    this.mousePosition = { x: worldX, y: worldY };
 
-    // Find node under mouse
-    // Simple distance check since nodes are circles
+    // Find node under mouse using WORLD coordinates
     const node = this.simulation.nodes().find(n => {
         if (n.x === undefined || n.y === undefined) return false;
-        const dx = x - n.x;
-        const dy = y - n.y;
+        const dx = worldX - n.x;
+        const dy = worldY - n.y;
         return (dx * dx + dy * dy) < (20 * 20); // 20 is radius
     });
 
@@ -120,7 +143,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
           const target = l.target as unknown as SimulationNode;
           if (source.x === undefined || source.y === undefined || target.x === undefined || target.y === undefined) return false;
           
-          return this.isPointNearLine(x, y, source.x, source.y, target.x, target.y, 5); // 5px tolerance
+          return this.isPointNearLine(worldX, worldY, source.x, source.y, target.x, target.y, 5); // 5px tolerance
        });
        this.hoveredEdge.set(edge || null);
     } else {
@@ -213,7 +236,8 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
         this.simulation = d3.forceSimulation<SimulationNode, SimulationLink>(this.nodes)
             .force('link', d3.forceLink<SimulationNode, SimulationLink>(this.links).id((d: SimulationNode) => d.id).distance(100))
             .force('charge', d3.forceManyBody().strength(-300))
-            .force('center', d3.forceCenter(this.width / 2, this.height / 2))
+            .force('x', d3.forceX(this.width / 2).strength(0.05))
+            .force('y', d3.forceY(this.height / 2).strength(0.05))
             .force('collide', d3.forceCollide().radius(30))
             .on('tick', () => this.draw());
     } else {
@@ -230,6 +254,10 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     
     ctx.clearRect(0, 0, this.width, this.height);
     
+    ctx.save();
+    ctx.translate(this.transform.x, this.transform.y);
+    ctx.scale(this.transform.k, this.transform.k);
+
     // Draw Links
     ctx.lineCap = 'round';
     for (const link of this.links) {
@@ -269,6 +297,10 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
         if (node.x === undefined || node.y === undefined) continue;
         
         ctx.beginPath();
+        // Constant node size matching hit area
+        // Note: scaling the context scales everything, including the node radius.
+        // If we want nodes to stay the same visual size while zooming, we'd divide radius by k.
+        // But typically zooming in means seeing things larger, so simple scale is fine.
         ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
         if (this.hoveredNode() === node) {
           ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
@@ -294,6 +326,8 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
         ctx.textBaseline = 'middle';
         ctx.fillText(node.label, node.x, node.y + 35);
     }
+    
+    ctx.restore();
   }
 
   private getNodeColor(type: string): string {

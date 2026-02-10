@@ -1,0 +1,16 @@
+<div class="project-container">
+  <h3>Current Project: {{ store.projectName() }}</h3>
+  
+  <div class="new-project-form">
+    <input 
+      type="text" 
+      [ngModel]="newProjectName()" 
+      (ngModelChange)="newProjectName.set($event)"
+      placeholder="New Project Name"
+      (keyup.enter)="startProject()"
+    />
+    <button (click)="startProject()" [disabled]="!newProjectName().trim()">
+      Start Project
+    </button>
+  </div>
+</div>

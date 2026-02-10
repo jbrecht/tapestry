@@ -30,9 +30,11 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-const STORAGE_KEY = 'tapestry-store-v1';
+const ACTIVE_PROJECT_KEY = 'tapestry-active-project';
+const PROJECT_PREFIX = 'tapestry-project-';
 
 export interface TapestryState {
+  projectName: string;
   nodes: TapestryNode[];
   edges: TapestryEdge[];
   messages: ChatMessage[];
@@ -47,22 +49,27 @@ function loadInitialState(): Partial<TapestryState> {
       return {};
   }
 
-  const stored = localStorage.getItem(STORAGE_KEY);
-  console.log(`[TapestryStore] Reading from key '${STORAGE_KEY}'. Found:`, stored ? `${stored.length} bytes` : 'null');
+  const activeProject = localStorage.getItem(ACTIVE_PROJECT_KEY) || 'default-project';
+  const storageKey = PROJECT_PREFIX + activeProject;
+
+  const stored = localStorage.getItem(storageKey);
+  console.log(`[TapestryStore] Reading from key '${storageKey}'. Found:`, stored ? `${stored.length} bytes` : 'null');
 
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
       console.log('[TapestryStore] Parsed state from localStorage:', parsed);
-      return parsed;
+      // Ensure the loaded state uses the active project name
+      return { ...parsed, projectName: activeProject };
     } catch (e) {
       console.error('[TapestryStore] Failed to parse stored state', e);
     }
   }
-  return {};
+  return { projectName: activeProject };
 }
 
 const initialState: TapestryState = {
+  projectName: 'default-project',
   nodes: [] as TapestryNode[],
   edges: [] as TapestryEdge[],
   messages: [] as ChatMessage[],
@@ -104,12 +111,28 @@ export const TapestryStore = signalStore(
     },
     setLoading(isLoading: boolean) {
       patchState(store, { isLoading });
+    },
+    startNewProject(projectName: string) {
+      patchState(store, {
+        projectName,
+        nodes: [],
+        edges: [],
+        messages: [],
+        activePerspective: 'abstract',
+        isLoading: false
+      });
+      // Immediately update the active project key so a reload picks it up
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(ACTIVE_PROJECT_KEY, projectName);
+      }
     }
   })),
   withHooks({
     onInit(store) {
       effect(() => {
         const state = {
+          // We don't necessarily need to store projectName inside the project blob, but it doesn't hurt.
+          projectName: store.projectName(),
           nodes: store.nodes(),
           edges: store.edges(),
           messages: store.messages(),
@@ -117,9 +140,13 @@ export const TapestryStore = signalStore(
         };
         
         if (typeof localStorage !== 'undefined') {
+             const storageKey = PROJECT_PREFIX + store.projectName();
              const serialized = JSON.stringify(state);
-             console.log(`[TapestryStore] Saving state to localStorage (${serialized.length} bytes):`, state);
-             localStorage.setItem(STORAGE_KEY, serialized);
+             console.log(`[TapestryStore] Saving state to localStorage key '${storageKey}' (${serialized.length} bytes)`);
+             localStorage.setItem(storageKey, serialized);
+             
+             // Also ensure active project is set (redundant but safe)
+             localStorage.setItem(ACTIVE_PROJECT_KEY, store.projectName());
         }
       });
     }

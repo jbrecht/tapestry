@@ -1,5 +1,5 @@
 <div class="chat-container">
-  <div class="message-list">
+  <div class="message-list" #messageList>
     @for (msg of store.messages(); track $index) {
       <div class="message" [class]="msg.role">
         <span class="label">{{ msg.role === 'user' ? 'You' : 'Loom' }}</span>
@@ -17,6 +17,7 @@
   <div class="input-area">
     <input 
       [(ngModel)]="userInput" 
+      (keyup.enter)="onSend()"
       placeholder="Name 3 People, Places or Things..."
       [disabled]="loomResource.isLoading()" />
     <button (click)="onSend()" [disabled]="loomResource.isLoading()">
