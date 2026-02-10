@@ -1,5 +1,5 @@
-import { signalStore, withState, withMethods, patchState, withComputed } from '@ngrx/signals';
-import { computed } from '@angular/core';
+import { signalStore, withState, withMethods, patchState, withComputed, withHooks } from '@ngrx/signals';
+import { computed, effect } from '@angular/core';
 
 export type PerspectiveType = 'abstract' | 'map' | 'timeline' | 'family-tree' | 'ledger';
 
@@ -30,15 +30,53 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+const STORAGE_KEY = 'tapestry-store-v1';
+
+export interface TapestryState {
+  nodes: TapestryNode[];
+  edges: TapestryEdge[];
+  messages: ChatMessage[];
+  activePerspective: PerspectiveType;
+  isLoading: boolean;
+}
+
+function loadInitialState(): Partial<TapestryState> {
+  // Check if localStorage is available (it might not be in SSR or some environments)
+  if (typeof localStorage === 'undefined') {
+      console.warn('[TapestryStore] localStorage is undefined, skipping load.');
+      return {};
+  }
+
+  const stored = localStorage.getItem(STORAGE_KEY);
+  console.log(`[TapestryStore] Reading from key '${STORAGE_KEY}'. Found:`, stored ? `${stored.length} bytes` : 'null');
+
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      console.log('[TapestryStore] Parsed state from localStorage:', parsed);
+      return parsed;
+    } catch (e) {
+      console.error('[TapestryStore] Failed to parse stored state', e);
+    }
+  }
+  return {};
+}
+
+const initialState: TapestryState = {
+  nodes: [] as TapestryNode[],
+  edges: [] as TapestryEdge[],
+  messages: [] as ChatMessage[],
+  activePerspective: 'abstract' as PerspectiveType,
+  isLoading: false,
+};
+
 export const TapestryStore = signalStore(
   { providedIn: 'root' },
-  withState({
-    nodes: [] as TapestryNode[],
-    edges: [] as TapestryEdge[],
-    messages: [] as ChatMessage[],
-    activePerspective: 'abstract' as PerspectiveType,
-    isLoading: false,
-  }),
+  withState(() => ({
+    ...initialState,
+    ...loadInitialState(),
+    isLoading: false
+  })),
   withComputed(({ nodes, edges }) => ({
     // Perspective Helpers
     mapNodes: computed(() => nodes().filter(n => !!n.attributes.coordinates)),
@@ -67,5 +105,23 @@ export const TapestryStore = signalStore(
     setLoading(isLoading: boolean) {
       patchState(store, { isLoading });
     }
-  }))
+  })),
+  withHooks({
+    onInit(store) {
+      effect(() => {
+        const state = {
+          nodes: store.nodes(),
+          edges: store.edges(),
+          messages: store.messages(),
+          activePerspective: store.activePerspective()
+        };
+        
+        if (typeof localStorage !== 'undefined') {
+             const serialized = JSON.stringify(state);
+             console.log(`[TapestryStore] Saving state to localStorage (${serialized.length} bytes):`, state);
+             localStorage.setItem(STORAGE_KEY, serialized);
+        }
+      });
+    }
+  })
 );
