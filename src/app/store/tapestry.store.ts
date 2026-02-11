@@ -213,6 +213,106 @@ export const TapestryStore = signalStore(
 
       // 3. Update active key
       localStorage.setItem(ACTIVE_PROJECT_KEY, projectName);
+    },
+    deleteProject(projectName: string) {
+      patchState(store, (state) => {
+        const newProjectList = state.projectList.filter(p => p !== projectName);
+        
+        // Remove from localStorage
+        if (typeof localStorage !== 'undefined') {
+          const storageKey = PROJECT_PREFIX + projectName;
+          localStorage.removeItem(storageKey);
+          localStorage.setItem(PROJECT_LIST_KEY, JSON.stringify(newProjectList));
+        }
+
+        // If deleting current project, switch to default or first available
+        if (state.projectName === projectName) {
+          const nextProject = newProjectList.length > 0 ? newProjectList[0] : 'default-project';
+          
+          // If we are falling back to 'default-project' and it wasn't in the list (e.g. list empty), ensure it is created
+          if (newProjectList.length === 0 && nextProject === 'default-project') {
+             // We can just return state and let a subsequent effect or action handle init, 
+             // but simpler to just set it up here.
+             // Actually, simplest is to just perform a switchProject-like logic effectively by returning new state
+             // But we need to load that new project's data.
+             
+             // To keep it simple: we will just update the list and active project name here.
+             // The effect or a separate call might be needed to load data if we want to be pure.
+             // But `withMethods` allows us to call other methods? No, not easily within patchState.
+             
+             // Let's do the side effect of loading the "next" project data here manually or assume switchProject will be called?
+             // We cannot call `switchProject` from within `patchState`.
+             // So we have to duplicate the load logic or move it to a helper.
+             
+             // Refactoring load logic is better, but for now let's just do a tailored load for the next project.
+             
+             let nextState: Partial<TapestryState> = {
+                projectName: nextProject,
+                nodes: [],
+                edges: [],
+                messages: [],
+                activePerspective: 'abstract' as PerspectiveType
+             };
+
+             if (typeof localStorage !== 'undefined') {
+                const nextKey = PROJECT_PREFIX + nextProject;
+                const stored = localStorage.getItem(nextKey);
+                if (stored) {
+                    try {
+                        const parsed = JSON.parse(stored);
+                        nextState = { ...nextState, ...parsed };
+                    } catch(e) { /* ignore */ }
+                }
+                localStorage.setItem(ACTIVE_PROJECT_KEY, nextProject);
+                
+                // If the list was empty and we forced default, make sure default is in the saved list
+                if (newProjectList.length === 0) {
+                    newProjectList.push('default-project');
+                    localStorage.setItem(PROJECT_LIST_KEY, JSON.stringify(newProjectList));
+                }
+             }
+             
+             return {
+                 ...state,
+                 ...nextState,
+                 projectList: newProjectList
+             };
+          }
+          
+           // Normal switch where next project exists
+           let nextState: Partial<TapestryState> = {
+                projectName: nextProject,
+                nodes: [],
+                edges: [],
+                messages: [],
+                activePerspective: 'abstract' as PerspectiveType
+             };
+
+             if (typeof localStorage !== 'undefined') {
+                const nextKey = PROJECT_PREFIX + nextProject;
+                const stored = localStorage.getItem(nextKey);
+                if (stored) {
+                    try {
+                        const parsed = JSON.parse(stored);
+                        nextState = { ...nextState, ...parsed };
+                    } catch(e) { /* ignore */ }
+                }
+                localStorage.setItem(ACTIVE_PROJECT_KEY, nextProject);
+             }
+             
+             return {
+                 ...state,
+                 ...nextState,
+                 projectList: newProjectList
+             };
+
+        }
+
+        return {
+            ...state,
+            projectList: newProjectList
+        };
+      });
     }
   })),
   withHooks({

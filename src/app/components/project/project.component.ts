@@ -9,6 +9,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { TapestryStore } from '../../store/tapestry.store';
 
+import { MatDialog } from '@angular/material/dialog';
+import { ProjectDeleteDialogComponent } from './project-delete-dialog.component';
+
 @Component({
   selector: 'app-project',
   standalone: true,
@@ -27,6 +30,7 @@ import { TapestryStore } from '../../store/tapestry.store';
 })
 export class ProjectComponent {
   store = inject(TapestryStore);
+  dialog = inject(MatDialog);
   newProjectName = signal('');
 
   startProject() {
@@ -40,5 +44,15 @@ export class ProjectComponent {
     if (!this.store.projectName() || name !== this.store.projectName()) {
       this.store.switchProject(name);
     }
+  }
+
+  onDeleteProject() {
+    const dialogRef = this.dialog.open(ProjectDeleteDialogComponent);
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.store.deleteProject(this.store.projectName());
+      }
+    });
   }
 }
