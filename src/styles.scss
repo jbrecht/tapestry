@@ -1,12 +1,24 @@
 /* You can add global styles to this file, and also import other style files */
 @use '@angular/material/prebuilt-themes/indigo-pink.css';
 
+:root {
+  --bg-primary: #f0f2f5;    /* Light Gray Background */
+  --bg-secondary: #ffffff;  /* White Surface */
+  --bg-tertiary: #e4e6eb;   /* Slightly darker for inputs/messages */
+  --text-primary: #050505;  /* Almost Black */
+  --text-secondary: #65676b; /* Gray Text */
+  --accent-color: #3f51b5;  /* Indigo accent */
+  --border-color: #dbdbdb;
+}
+
 html,
 body {
   height: 100%;
   margin: 0;
   font-family: Roboto, "Helvetica Neue", sans-serif;
   box-sizing: border-box;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 *,

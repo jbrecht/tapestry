@@ -5,26 +5,31 @@
 }
 .tapestry-container {
   height: 100vh;
-  // Ensure the container takes full height
+  background-color: var(--bg-primary);
   
   .chat-drawer {
-    width: 350px; // Fixed width for chat side
-    border-right: 1px solid rgba(255, 255, 255, 0.1); 
-    background: #1a1a1a;
+    width: 380px; 
+    border-right: 1px solid var(--border-color); 
+    background-color: var(--bg-secondary);
+    box-shadow: 2px 0 5px rgba(0,0,0,0.2);
   }
 
   .main-content {
     display: flex;
     flex-direction: column;
     overflow: hidden; 
-    // Usually canvas handles its own scrolling or is full size
-    // ensuring relative positioning for canvas absolute children if needed
     position: relative; 
+    background-color: var(--bg-primary);
+
     app-tapestry-canvas {
-      flex: 2;
-    }
-    app-project {
       flex: 1;
+      overflow: hidden;
+    }
+    
+    app-project {
+      flex: 0 0 auto; // Don't grow, take content size or fixed size if set in component
+      z-index: 10;
+      box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
     }
   }
 }

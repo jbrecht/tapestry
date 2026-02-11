@@ -1,18 +1,21 @@
+@use '@angular/material' as mat;
+
 .project-container {
   display: flex;
   flex-direction: column;
-  padding: 12px;
-  border-top: 1px solid #ddd;
-  background-color: #f8f9fa;
-  gap: 12px;
-  max-height: 300px; /* Limit height if many projects */
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  gap: 16px;
+  color: var(--text-primary);
+  max-height: 350px;
 
   h3 {
     margin: 0;
-    font-size: 11px;
+    font-size: 0.75rem;
     text-transform: uppercase;
-    color: #888;
-    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
     font-weight: 600;
   }
 
@@ -20,11 +23,19 @@
     width: 100%;
     
     ::ng-deep .mat-mdc-text-field-wrapper {
-      background-color: white;
+      background-color: var(--bg-primary);
     }
     
     ::ng-deep .mat-mdc-form-field-subscript-wrapper {
       display: none;
+    }
+    
+    ::ng-deep .mat-mdc-select-value {
+      color: var(--text-primary);
+    }
+    
+    ::ng-deep .mat-mdc-select-arrow {
+      color: var(--text-secondary);
     }
   }
 
@@ -36,9 +47,16 @@
       // Compact styles for the form field
       ::ng-deep .mat-mdc-text-field-wrapper {
         padding-bottom: 0;
+        background-color: var(--bg-primary);
       }
       ::ng-deep .mat-mdc-form-field-subscript-wrapper {
         display: none;
+      }
+      ::ng-deep .mat-mdc-input-element {
+        color: var(--text-primary);
+      }
+      ::ng-deep .mat-mdc-form-field-icon-suffix {
+        color: var(--accent-color);
       }
     }
   }
