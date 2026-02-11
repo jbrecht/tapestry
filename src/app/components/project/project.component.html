@@ -3,16 +3,14 @@
     <h3>Projects</h3>
   </div>
 
-  <mat-nav-list class="project-list">
-    <a mat-list-item 
-       *ngFor="let project of store.projectList()" 
-       [class.active]="project === store.projectName()"
-       (click)="onSwitchProject(project)"
-       href="javascript:void(0)">
-      <span matListItemTitle>{{ project }}</span>
-      <mat-icon matListItemIcon *ngIf="project === store.projectName()">check</mat-icon>
-    </a>
-  </mat-nav-list>
+  <mat-form-field appearance="outline" class="project-select">
+    <mat-label>Select Project</mat-label>
+    <mat-select [value]="store.projectName()" (selectionChange)="onSwitchProject($event.value)">
+      <mat-option *ngFor="let project of store.projectList()" [value]="project">
+        {{ project }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
   
   <div class="new-project-form">
     <mat-form-field appearance="outline" class="new-project-input">
@@ -27,12 +25,12 @@
       </button>
     </mat-form-field>
   </div>
-  <!-- <div class="debug-stats" style="margin-top: 20px; font-size: 0.8em; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
+  <div class="debug-stats" style="margin-top: 20px; font-size: 0.8em; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
     <div><strong>Debug Stats:</strong></div>
     <div>Nodes: {{ store.nodes().length }}</div>
     <div>Edges: {{ store.edges().length }}</div>
     <div>Messages: {{ store.messages().length }}</div>
     <div>Active Project: {{ store.projectName() }}</div>
     <div>Is Loading: {{ store.isLoading() }}</div>
-  </div> -->
+  </div>
 </div>

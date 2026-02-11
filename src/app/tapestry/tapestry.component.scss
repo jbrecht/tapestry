@@ -20,5 +20,11 @@
     // Usually canvas handles its own scrolling or is full size
     // ensuring relative positioning for canvas absolute children if needed
     position: relative; 
+    app-tapestry-canvas {
+      flex: 2;
+    }
+    app-project {
+      flex: 1;
+    }
   }
 }
