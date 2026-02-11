@@ -20,4 +20,10 @@ export class ProjectComponent {
       this.newProjectName.set('');
     }
   }
+
+  onSwitchProject(name: string) {
+    if (!this.store.projectName() || name !== this.store.projectName()) {
+      this.store.switchProject(name);
+    }
+  }
 }

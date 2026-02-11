@@ -1,5 +1,18 @@
 <div class="project-container">
-  <h3>Current Project: {{ store.projectName() }}</h3>
+  <div class="header-row">
+    <h3>Projects</h3>
+  </div>
+
+  <div class="project-list">
+    <div 
+      *ngFor="let project of store.projectList()" 
+      class="project-item"
+      [class.active]="project === store.projectName()"
+      (click)="onSwitchProject(project)"
+    >
+      {{ project }}
+    </div>
+  </div>
   
   <div class="new-project-form">
     <input 
@@ -10,7 +23,15 @@
       (keyup.enter)="startProject()"
     />
     <button (click)="startProject()" [disabled]="!newProjectName().trim()">
-      Start Project
+      +
     </button>
   </div>
+  <!-- <div class="debug-stats" style="margin-top: 20px; font-size: 0.8em; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
+    <div><strong>Debug Stats:</strong></div>
+    <div>Nodes: {{ store.nodes().length }}</div>
+    <div>Edges: {{ store.edges().length }}</div>
+    <div>Messages: {{ store.messages().length }}</div>
+    <div>Active Project: {{ store.projectName() }}</div>
+    <div>Is Loading: {{ store.isLoading() }}</div>
+  </div> -->
 </div>

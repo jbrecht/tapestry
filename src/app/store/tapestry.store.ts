@@ -32,9 +32,11 @@ export interface ChatMessage {
 
 const ACTIVE_PROJECT_KEY = 'tapestry-active-project';
 const PROJECT_PREFIX = 'tapestry-project-';
+const PROJECT_LIST_KEY = 'tapestry-project-list';
 
 export interface TapestryState {
   projectName: string;
+  projectList: string[];
   nodes: TapestryNode[];
   edges: TapestryEdge[];
   messages: ChatMessage[];
@@ -50,8 +52,25 @@ function loadInitialState(): Partial<TapestryState> {
   }
 
   const activeProject = localStorage.getItem(ACTIVE_PROJECT_KEY) || 'default-project';
-  const storageKey = PROJECT_PREFIX + activeProject;
+  
+  // Load Project List
+  let projectList: string[] = [];
+  const storedList = localStorage.getItem(PROJECT_LIST_KEY);
+  if (storedList) {
+    try {
+      projectList = JSON.parse(storedList);
+    } catch (e) {
+      console.error('[TapestryStore] Failed to parse project list', e);
+    }
+  }
+  
+  // Migration/Init: If list is empty but we have an active project, ensure it's in the list
+  if (!projectList.includes(activeProject)) {
+    projectList.push(activeProject);
+    localStorage.setItem(PROJECT_LIST_KEY, JSON.stringify(projectList));
+  }
 
+  const storageKey = PROJECT_PREFIX + activeProject;
   const stored = localStorage.getItem(storageKey);
   console.log(`[TapestryStore] Reading from key '${storageKey}'. Found:`, stored ? `${stored.length} bytes` : 'null');
 
@@ -59,17 +78,18 @@ function loadInitialState(): Partial<TapestryState> {
     try {
       const parsed = JSON.parse(stored);
       console.log('[TapestryStore] Parsed state from localStorage:', parsed);
-      // Ensure the loaded state uses the active project name
-      return { ...parsed, projectName: activeProject };
+      // Ensure the loaded state uses the active project name and current list
+      return { ...parsed, projectName: activeProject, projectList };
     } catch (e) {
       console.error('[TapestryStore] Failed to parse stored state', e);
     }
   }
-  return { projectName: activeProject };
+  return { projectName: activeProject, projectList };
 }
 
 const initialState: TapestryState = {
   projectName: 'default-project',
+  projectList: ['default-project'],
   nodes: [] as TapestryNode[],
   edges: [] as TapestryEdge[],
   messages: [] as ChatMessage[],
@@ -113,18 +133,86 @@ export const TapestryStore = signalStore(
       patchState(store, { isLoading });
     },
     startNewProject(projectName: string) {
-      patchState(store, {
+      patchState(store, (state) => {
+        // Check if project already exists to prevent overwriting
+        if (state.projectList.includes(projectName)) {
+          console.log(`[TapestryStore] Project '${projectName}' already exists. Switching to it instead of overwriting.`);
+          
+          // Load existing data
+          let loadedState: Partial<TapestryState> = {};
+          if (typeof localStorage !== 'undefined') {
+            const storageKey = PROJECT_PREFIX + projectName;
+            const stored = localStorage.getItem(storageKey);
+            if (stored) {
+              try {
+                loadedState = JSON.parse(stored);
+              } catch (e) {
+                console.error('[TapestryStore] Failed to parse existing project state', e);
+              }
+            }
+          }
+
+          return {
+            ...state,
+            ...loadedState,
+            projectName,
+            activePerspective: (loadedState.activePerspective || 'abstract') as PerspectiveType,
+            isLoading: false
+          };
+        }
+
+        const newProjectList = [...state.projectList, projectName];
+        
+        // Save list immediately
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(PROJECT_LIST_KEY, JSON.stringify(newProjectList));
+          localStorage.setItem(ACTIVE_PROJECT_KEY, projectName);
+        }
+
+        return {
+          projectName,
+          projectList: newProjectList,
+          nodes: [] as TapestryNode[],
+          edges: [] as TapestryEdge[],
+          messages: [] as ChatMessage[],
+          activePerspective: 'abstract' as PerspectiveType,
+          isLoading: false
+        };
+      });
+    },
+    switchProject(projectName: string) {
+      if (typeof localStorage === 'undefined') return;
+
+      // 1. Load data for the target project
+      const storageKey = PROJECT_PREFIX + projectName;
+      const stored = localStorage.getItem(storageKey);
+      
+      let newState: Partial<TapestryState> = {
         projectName,
         nodes: [],
         edges: [],
         messages: [],
-        activePerspective: 'abstract',
-        isLoading: false
-      });
-      // Immediately update the active project key so a reload picks it up
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(ACTIVE_PROJECT_KEY, projectName);
+        activePerspective: 'abstract' as PerspectiveType
+      };
+
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          newState = { ...newState, ...parsed };
+        } catch (e) {
+          console.error('[TapestryStore] Failed to parse target project state', e);
+        }
       }
+
+      // 2. Update state
+      patchState(store, (state) => ({
+        ...state,
+        ...newState,
+        projectList: state.projectList // Keep existing list
+      }));
+
+      // 3. Update active key
+      localStorage.setItem(ACTIVE_PROJECT_KEY, projectName);
     }
   })),
   withHooks({
