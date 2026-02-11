@@ -16,11 +16,14 @@
 
   <div class="input-area">
     <mat-form-field appearance="outline" class="chat-input-field">
-      <mat-label>Name 3 People, Places or Things...</mat-label>
+      <mat-label>Tell your tale...</mat-label>
       <input matInput 
              [(ngModel)]="userInput" 
              (keyup.enter)="onSend()"
              [disabled]="loomResource.isLoading()">
+      <button mat-icon-button matSuffix (click)="toggleListening()" [color]="isListening() ? 'warn' : ''" [class.listening]="isListening()" [disabled]="loomResource.isLoading()" class="mic-button">
+        <mat-icon>{{ isListening() ? 'mic' : 'mic_none' }}</mat-icon>
+      </button>
       <button mat-icon-button matSuffix (click)="onSend()" [disabled]="loomResource.isLoading()">
         <mat-icon>send</mat-icon>
       </button>

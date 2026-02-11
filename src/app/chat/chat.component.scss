@@ -80,7 +80,24 @@
       
       ::ng-deep .mat-mdc-form-field-icon-suffix {
         color: var(--accent-color);
+        display: flex;
+        align-items: center;
+
+        .mic-button {
+          transition: all 0.2s ease;
+          
+          &.listening {
+            animation: pulse 1.5s infinite;
+            background-color: rgba(244, 67, 54, 0.1); // Light red background
+          }
+        }
       }
     }
   }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
 }

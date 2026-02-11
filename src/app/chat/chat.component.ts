@@ -53,6 +53,9 @@ export class ChatComponent {
     }
   });
 
+  isListening = signal(false);
+  private recognition: SpeechRecognition | null = null;
+
   constructor() {
     // Effect to synchronize the AI's response with the Global Signal Store
     effect(() => {
@@ -80,6 +83,56 @@ export class ChatComponent {
             this.scrollToBottom();
         }, 50);
     });
+
+    this.initializeSpeechRecognition();
+  }
+
+  private initializeSpeechRecognition() {
+    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        this.isListening.set(true);
+      };
+
+      recognition.onend = () => {
+        this.isListening.set(false);
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          this.userInput.update(current => {
+            const trimmed = current.trim();
+            return trimmed ? `${trimmed} ${transcript}` : transcript;
+          });
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        this.isListening.set(false);
+      };
+
+      this.recognition = recognition;
+    }
+  }
+
+  toggleListening() {
+    if (!this.recognition) {
+      console.warn('Speech recognition not supported or not initialized.');
+      return;
+    }
+
+    if (this.isListening()) {
+      this.recognition.stop();
+    } else {
+      this.recognition.start();
+    }
   }
 
   private scrollToBottom() {
