@@ -1,7 +1,9 @@
 <div class="switcher-bar">
-  @for (p of perspectives; track p.id) {
-    <button [class.active]="currentPerspective() === p.id" (click)="setPerspective(p.id)">
-      {{ p.label }}
-    </button>
-  }
+  <mat-button-toggle-group [value]="currentPerspective()" (change)="setPerspective($event.value)" appearance="legacy">
+    @for (p of perspectives; track p.id) {
+      <mat-button-toggle [value]="p.id">
+        {{ p.label }}
+      </mat-button-toggle>
+    }
+  </mat-button-toggle-group>
 </div>

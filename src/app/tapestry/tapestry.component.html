@@ -1,9 +1,9 @@
-<div class="split-view">
-  <div class="left-pane">
+<mat-drawer-container class="tapestry-container">
+  <mat-drawer mode="side" opened class="chat-drawer">
     <app-chat />
-  </div>
-  <div class="right-pane">
+  </mat-drawer>
+  <mat-drawer-content class="main-content">
     <app-tapestry-canvas />
     <app-project />
-  </div>
-</div>
+  </mat-drawer-content>
+</mat-drawer-container>

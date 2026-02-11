@@ -3,28 +3,29 @@
     <h3>Projects</h3>
   </div>
 
-  <div class="project-list">
-    <div 
-      *ngFor="let project of store.projectList()" 
-      class="project-item"
-      [class.active]="project === store.projectName()"
-      (click)="onSwitchProject(project)"
-    >
-      {{ project }}
-    </div>
-  </div>
+  <mat-nav-list class="project-list">
+    <a mat-list-item 
+       *ngFor="let project of store.projectList()" 
+       [class.active]="project === store.projectName()"
+       (click)="onSwitchProject(project)"
+       href="javascript:void(0)">
+      <span matListItemTitle>{{ project }}</span>
+      <mat-icon matListItemIcon *ngIf="project === store.projectName()">check</mat-icon>
+    </a>
+  </mat-nav-list>
   
   <div class="new-project-form">
-    <input 
-      type="text" 
-      [ngModel]="newProjectName()" 
-      (ngModelChange)="newProjectName.set($event)"
-      placeholder="New Project Name"
-      (keyup.enter)="startProject()"
-    />
-    <button (click)="startProject()" [disabled]="!newProjectName().trim()">
-      +
-    </button>
+    <mat-form-field appearance="outline" class="new-project-input">
+      <mat-label>New Project Name</mat-label>
+      <input matInput 
+             type="text" 
+             [ngModel]="newProjectName()" 
+             (ngModelChange)="newProjectName.set($event)"
+             (keyup.enter)="startProject()" />
+      <button mat-icon-button matSuffix (click)="startProject()" [disabled]="!newProjectName().trim()">
+        <mat-icon>add</mat-icon>
+      </button>
+    </mat-form-field>
   </div>
   <!-- <div class="debug-stats" style="margin-top: 20px; font-size: 0.8em; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
     <div><strong>Debug Stats:</strong></div>

@@ -1,19 +1,29 @@
 .switcher-bar {
   display: flex;
-  gap: 10px;
+  justify-content: center;
   padding: 10px;
   background: #222;
-}
 
-button {
-  padding: 8px 16px;
-  cursor: pointer;
-  border: none;
-  background: #444;
-  color: white;
-  border-radius: 4px;
+  // Override Material styles for dark theme look
+  ::ng-deep .mat-button-toggle-group {
+    border: none;
+    background-color: #444;
+    border-radius: 4px;
+    overflow: hidden;
+  }
 
-  &.active {
-    background: #007bff;
+  ::ng-deep .mat-button-toggle {
+    background-color: transparent;
+    color: #bbb;
+    border-left: 1px solid #555;
+
+    &.mat-button-toggle-checked {
+      background-color: #007bff; // Active color
+      color: white;
+    }
+
+    &:first-child {
+      border-left: none;
+    }
   }
 }

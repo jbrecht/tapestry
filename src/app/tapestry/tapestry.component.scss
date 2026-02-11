@@ -3,18 +3,22 @@
   height: 100vh;
   overflow: hidden;
 }
-.split-view {
-  display: flex;
-  height: 100%;
-}
-.left-pane {
-  flex: 1;
-  border-right: 1px solid #ccc;
-  display: flex;
-  flex-direction: column;
-}
-.right-pane {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+.tapestry-container {
+  height: 100vh;
+  // Ensure the container takes full height
+  
+  .chat-drawer {
+    width: 350px; // Fixed width for chat side
+    border-right: 1px solid rgba(255, 255, 255, 0.1); 
+    background: #1a1a1a;
+  }
+
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; 
+    // Usually canvas handles its own scrolling or is full size
+    // ensuring relative positioning for canvas absolute children if needed
+    position: relative; 
+  }
 }

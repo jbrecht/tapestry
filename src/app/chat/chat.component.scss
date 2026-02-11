@@ -50,28 +50,22 @@
   .input-area {
     padding: 20px;
     background: #252525;
-    display: flex;
-    gap: 10px;
-
-    input {
-      flex: 1;
-      background: #121212;
-      border: 1px solid #444;
-      color: white;
-      padding: 12px;
-      border-radius: 4px;
-      outline: none;
-      &:focus { border-color: #3498db; }
-    }
-
-    button {
-      padding: 0 20px;
-      background: #3498db;
-      border: none;
-      color: white;
-      border-radius: 4px;
-      cursor: pointer;
-      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .chat-input-field {
+      width: 100%;
+      // Ensure text is visible on dark background
+      ::ng-deep .mat-mdc-text-field-wrapper {
+        background-color: #121212; 
+      }
+      ::ng-deep .mat-mdc-form-field-input-control {
+        color: white;
+      }
+      ::ng-deep .mat-mdc-input-element::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+      }
+      ::ng-deep .mat-mdc-form-field-icon-suffix {
+        color: #3498db;
+      }
     }
   }
 }

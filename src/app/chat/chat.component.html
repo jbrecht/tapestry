@@ -15,13 +15,15 @@
   </div>
 
   <div class="input-area">
-    <input 
-      [(ngModel)]="userInput" 
-      (keyup.enter)="onSend()"
-      placeholder="Name 3 People, Places or Things..."
-      [disabled]="loomResource.isLoading()" />
-    <button (click)="onSend()" [disabled]="loomResource.isLoading()">
-      Send
-    </button>
+    <mat-form-field appearance="outline" class="chat-input-field">
+      <mat-label>Name 3 People, Places or Things...</mat-label>
+      <input matInput 
+             [(ngModel)]="userInput" 
+             (keyup.enter)="onSend()"
+             [disabled]="loomResource.isLoading()">
+      <button mat-icon-button matSuffix (click)="onSend()" [disabled]="loomResource.isLoading()">
+        <mat-icon>send</mat-icon>
+      </button>
+    </mat-form-field>
   </div>
 </div>
