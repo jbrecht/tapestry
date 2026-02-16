@@ -1,13 +1,12 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { ChatComponent } from '../chat/chat.component';
 import { TapestryCanvasComponent } from '../canvas/tapestry-canvas.component';
-import { ProjectComponent } from '../components/project/project.component';
 import { MatSidenavModule } from '@angular/material/sidenav';
 
 @Component({
   selector: 'app-tapestry',
   standalone: true,
-  imports: [ChatComponent, TapestryCanvasComponent, ProjectComponent, MatSidenavModule],
+  imports: [ChatComponent, TapestryCanvasComponent, MatSidenavModule],
   templateUrl: './tapestry.component.html',
   styleUrl: './tapestry.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -1,49 +1,41 @@
-<div class="project-container">
-  <div class="header-row">
-    <h3>Projects</h3>
-  </div>
+<button mat-button [matMenuTriggerFor]="projectMenu">
+  <mat-icon>folder_open</mat-icon>
+  {{ store.projectName() || 'Select Project' }}
+  <mat-icon>arrow_drop_down</mat-icon>
+</button>
 
-  <div class="controls-container">
-    <div class="control-group new-project-group">
-      <mat-form-field appearance="outline" class="dense-form-field">
-        <mat-label>New Project Name</mat-label>
-        <input matInput 
-               type="text" 
-               [ngModel]="newProjectName()" 
-               (ngModelChange)="newProjectName.set($event)"
-               (keyup.enter)="startProject()" />
-        <button mat-icon-button matSuffix (click)="startProject()" [disabled]="!newProjectName().trim()">
-          <mat-icon>add</mat-icon>
-        </button>
-      </mat-form-field>
-    </div>
-    <div class="control-group project-select-group">
-      <mat-form-field appearance="outline" class="dense-form-field">
-        <mat-label>Select Project</mat-label>
-        <mat-select [value]="store.projectId()" (selectionChange)="onSwitchProject($event.value)">
-          <mat-option *ngFor="let project of store.projectList()" [value]="project.id">
-            {{ project.name }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-      <button mat-icon-button color="warn" (click)="onDeleteProject()" aria-label="Delete Project" class="delete-btn">
-        <mat-icon>delete_outline</mat-icon>
-      </button>
-    </div>
-  </div>
+<mat-menu #projectMenu="matMenu">
+  <button mat-menu-item (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    <span>New Project...</span>
+  </button>
+  
+  <mat-divider></mat-divider>
 
-  <div class="stats-row">
-    <div class="stat-item" title="Nodes">
-      <mat-icon>hub</mat-icon>
-      <span>{{ store.nodes().length }}</span>
-    </div>
-    <div class="stat-item" title="Edges">
-      <mat-icon>polyline</mat-icon>
-      <span>{{ store.edges().length }}</span>
-    </div>
-    <div class="stat-item" title="Messages">
-      <mat-icon>chat</mat-icon>
-      <span>{{ store.messages().length }}</span>
+  <button mat-menu-item [matMenuTriggerFor]="projectsSubMenu">
+    <mat-icon>list</mat-icon>
+    <span>Switch Project</span>
+  </button>
+  
+  <mat-divider></mat-divider>
+  
+  <button mat-menu-item (click)="onDeleteProject()" [disabled]="!store.projectId()">
+    <mat-icon>delete</mat-icon>
+    <span>Delete Current Project</span>
+  </button>
+</mat-menu>
+
+<mat-menu #projectsSubMenu="matMenu">
+  <div class="project-list-container">
+    <button mat-menu-item *ngFor="let project of store.projectList()" 
+            (click)="onSwitchProject(project.id)"
+            [class.selected]="project.id === store.projectId()">
+      <mat-icon *ngIf="project.id === store.projectId()">check</mat-icon>
+      <span [class.inset]="project.id !== store.projectId()">{{ project.name }}</span>
+    </button>
+    <div *ngIf="store.projectList().length === 0" class="no-projects">
+      No projects available
     </div>
   </div>
-</div>
+</mat-menu>
+

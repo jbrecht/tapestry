@@ -1,10 +1,10 @@
 :host {
   display: block;
-  height: 100vh;
+  height: 100%; // Fill the available space from parent (router-outlet)
   overflow: hidden;
 }
 .tapestry-container {
-  height: 100vh;
+  height: 100%; // Fill host height
   background-color: var(--bg-primary);
   
   .chat-drawer {
@@ -24,12 +24,6 @@
     app-tapestry-canvas {
       flex: 1;
       overflow: hidden;
-    }
-    
-    app-project {
-      flex: 0 0 auto; // Don't grow, take content size or fixed size if set in component
-      z-index: 10;
-      box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
     }
   }
 }

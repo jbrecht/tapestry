@@ -1,29 +1,24 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatListModule } from '@angular/material/list';
-import { MatSelectModule } from '@angular/material/select';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatDividerModule } from '@angular/material/divider';
 import { TapestryStore } from '../../store/tapestry.store';
 
 import { MatDialog } from '@angular/material/dialog';
 import { ProjectDeleteDialogComponent } from './project-delete-dialog.component';
+import { ProjectCreateDialogComponent } from './project-create-dialog.component';
 
 @Component({
   selector: 'app-project',
   standalone: true,
   imports: [
     CommonModule, 
-    FormsModule,
-    MatListModule,
-    MatSelectModule,
+    MatMenuModule,
     MatIconModule,
     MatButtonModule,
-    MatInputModule,
-    MatFormFieldModule
+    MatDividerModule
   ],
   templateUrl: './project.component.html',
   styleUrl: './project.component.scss'
@@ -31,13 +26,17 @@ import { ProjectDeleteDialogComponent } from './project-delete-dialog.component'
 export class ProjectComponent {
   store = inject(TapestryStore);
   dialog = inject(MatDialog);
-  newProjectName = signal('');
 
-  startProject() {
-    if (this.newProjectName().trim()) {
-      this.store.startNewProject(this.newProjectName().trim());
-      this.newProjectName.set('');
-    }
+  openCreateDialog() {
+    const dialogRef = this.dialog.open(ProjectCreateDialogComponent, {
+      width: '400px'
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.store.startNewProject(result);
+      }
+    });
   }
 
   onSwitchProject(id: string) {
