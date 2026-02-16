@@ -40,19 +40,22 @@ export class ProjectComponent {
     }
   }
 
-  onSwitchProject(name: string) {
-    if (!this.store.projectName() || name !== this.store.projectName()) {
-      this.store.switchProject(name);
+  onSwitchProject(id: string) {
+    if (id && id !== this.store.projectId()) {
+      this.store.switchProject(id);
     }
   }
 
   onDeleteProject() {
-    const dialogRef = this.dialog.open(ProjectDeleteDialogComponent);
+    const projectId = this.store.projectId();
+    if (projectId) {
+      const dialogRef = this.dialog.open(ProjectDeleteDialogComponent);
 
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.store.deleteProject(this.store.projectName());
-      }
-    });
+      dialogRef.afterClosed().subscribe(result => {
+        if (result) {
+          this.store.deleteProject(projectId);
+        }
+      });
+    }
   }
 }

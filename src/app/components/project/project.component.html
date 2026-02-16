@@ -20,9 +20,9 @@
     <div class="control-group project-select-group">
       <mat-form-field appearance="outline" class="dense-form-field">
         <mat-label>Select Project</mat-label>
-        <mat-select [value]="store.projectName()" (selectionChange)="onSwitchProject($event.value)">
-          <mat-option *ngFor="let project of store.projectList()" [value]="project">
-            {{ project }}
+        <mat-select [value]="store.projectId()" (selectionChange)="onSwitchProject($event.value)">
+          <mat-option *ngFor="let project of store.projectList()" [value]="project.id">
+            {{ project.name }}
           </mat-option>
         </mat-select>
       </mat-form-field>

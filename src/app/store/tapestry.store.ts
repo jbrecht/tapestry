@@ -1,5 +1,11 @@
 import { signalStore, withState, withMethods, patchState, withComputed, withHooks } from '@ngrx/signals';
-import { computed, effect } from '@angular/core';
+import { computed, inject, effect } from '@angular/core';
+import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { pipe, of } from 'rxjs';
+import { switchMap, tap, catchError, debounceTime, filter, map } from 'rxjs/operators';
+import { ProjectService, Project } from '../services/project.service';
+import { AuthService } from '../services/auth.service';
+import { Router } from '@angular/router';
 
 export type PerspectiveType = 'abstract' | 'map' | 'timeline' | 'family-tree' | 'ledger';
 
@@ -30,80 +36,33 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-const ACTIVE_PROJECT_KEY = 'tapestry-active-project';
-const PROJECT_PREFIX = 'tapestry-project-';
-const PROJECT_LIST_KEY = 'tapestry-project-list';
-
 export interface TapestryState {
+  projectId: string | null;
   projectName: string;
-  projectList: string[];
+  projectList: Project[];
   nodes: TapestryNode[];
   edges: TapestryEdge[];
   messages: ChatMessage[];
   activePerspective: PerspectiveType;
   isLoading: boolean;
-}
-
-function loadInitialState(): Partial<TapestryState> {
-  // Check if localStorage is available (it might not be in SSR or some environments)
-  if (typeof localStorage === 'undefined') {
-      console.warn('[TapestryStore] localStorage is undefined, skipping load.');
-      return {};
-  }
-
-  const activeProject = localStorage.getItem(ACTIVE_PROJECT_KEY) || 'default-project';
-  
-  // Load Project List
-  let projectList: string[] = [];
-  const storedList = localStorage.getItem(PROJECT_LIST_KEY);
-  if (storedList) {
-    try {
-      projectList = JSON.parse(storedList);
-    } catch (e) {
-      console.error('[TapestryStore] Failed to parse project list', e);
-    }
-  }
-  
-  // Migration/Init: If list is empty but we have an active project, ensure it's in the list
-  if (!projectList.includes(activeProject)) {
-    projectList.push(activeProject);
-    localStorage.setItem(PROJECT_LIST_KEY, JSON.stringify(projectList));
-  }
-
-  const storageKey = PROJECT_PREFIX + activeProject;
-  const stored = localStorage.getItem(storageKey);
-  console.log(`[TapestryStore] Reading from key '${storageKey}'. Found:`, stored ? `${stored.length} bytes` : 'null');
-
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      console.log('[TapestryStore] Parsed state from localStorage:', parsed);
-      // Ensure the loaded state uses the active project name and current list
-      return { ...parsed, projectName: activeProject, projectList };
-    } catch (e) {
-      console.error('[TapestryStore] Failed to parse stored state', e);
-    }
-  }
-  return { projectName: activeProject, projectList };
+  isSaving: boolean;
 }
 
 const initialState: TapestryState = {
-  projectName: 'default-project',
-  projectList: ['default-project'],
-  nodes: [] as TapestryNode[],
-  edges: [] as TapestryEdge[],
-  messages: [] as ChatMessage[],
-  activePerspective: 'abstract' as PerspectiveType,
+  projectId: null,
+  projectName: 'No Project Selected',
+  projectList: [],
+  nodes: [],
+  edges: [],
+  messages: [],
+  activePerspective: 'abstract',
   isLoading: false,
+  isSaving: false,
 };
 
 export const TapestryStore = signalStore(
   { providedIn: 'root' },
-  withState(() => ({
-    ...initialState,
-    ...loadInitialState(),
-    isLoading: false
-  })),
+  withState(initialState),
   withComputed(({ nodes, edges }) => ({
     // Perspective Helpers
     mapNodes: computed(() => nodes().filter(n => !!n.attributes.coordinates)),
@@ -117,226 +76,192 @@ export const TapestryStore = signalStore(
     edgeCount: computed(() => edges().length),
     isWorldEmpty: computed(() => nodes().length === 0)
   })),
-  withMethods((store) => ({
-    updateGraph(nodes: TapestryNode[], edges: TapestryEdge[]) {
-      patchState(store, { nodes, edges });
-    },
-    addChatMessage(role: 'user' | 'assistant', content: string) {
-      patchState(store, (state) => ({
-        messages: [...state.messages, { role, content, timestamp: Date.now() }]
-      }));
-    },
-    setPerspective(activePerspective: PerspectiveType) {
-      patchState(store, { activePerspective });
-    },
-    setLoading(isLoading: boolean) {
-      patchState(store, { isLoading });
-    },
-    startNewProject(projectName: string) {
-      patchState(store, (state) => {
-        // Check if project already exists to prevent overwriting
-        if (state.projectList.includes(projectName)) {
-          console.log(`[TapestryStore] Project '${projectName}' already exists. Switching to it instead of overwriting.`);
-          
-          // Load existing data
-          let loadedState: Partial<TapestryState> = {};
-          if (typeof localStorage !== 'undefined') {
-            const storageKey = PROJECT_PREFIX + projectName;
-            const stored = localStorage.getItem(storageKey);
-            if (stored) {
-              try {
-                loadedState = JSON.parse(stored);
-              } catch (e) {
-                console.error('[TapestryStore] Failed to parse existing project state', e);
-              }
-            }
-          }
-
-          return {
-            ...state,
-            ...loadedState,
-            projectName,
-            activePerspective: (loadedState.activePerspective || 'abstract') as PerspectiveType,
-            isLoading: false
-          };
-        }
-
-        const newProjectList = [...state.projectList, projectName];
-        
-        // Save list immediately
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(PROJECT_LIST_KEY, JSON.stringify(newProjectList));
-          localStorage.setItem(ACTIVE_PROJECT_KEY, projectName);
-        }
-
-        return {
-          projectName,
-          projectList: newProjectList,
-          nodes: [] as TapestryNode[],
-          edges: [] as TapestryEdge[],
-          messages: [] as ChatMessage[],
-          activePerspective: 'abstract' as PerspectiveType,
-          isLoading: false
-        };
-      });
-    },
-    switchProject(projectName: string) {
-      if (typeof localStorage === 'undefined') return;
-
-      // 1. Load data for the target project
-      const storageKey = PROJECT_PREFIX + projectName;
-      const stored = localStorage.getItem(storageKey);
+  // 1. Basic Methods & Data-only methods
+  withMethods((store) => {
+    const projectService = inject(ProjectService);
+    
+    return {
+      updateGraph(nodes: TapestryNode[], edges: TapestryEdge[]) {
+        patchState(store, { nodes, edges });
+      },
+      addChatMessage(role: 'user' | 'assistant', content: string) {
+        patchState(store, (state) => ({
+          messages: [...state.messages, { role, content, timestamp: Date.now() }]
+        }));
+      },
+      setPerspective(activePerspective: PerspectiveType) {
+        patchState(store, { activePerspective });
+      },
+      setLoading(isLoading: boolean) {
+        patchState(store, { isLoading });
+      },
       
-      let newState: Partial<TapestryState> = {
-        projectName,
-        nodes: [],
-        edges: [],
-        messages: [],
-        activePerspective: 'abstract' as PerspectiveType
-      };
+      // Load Project List
+      loadProjectList: rxMethod<void>(
+        pipe(
+          switchMap(() => projectService.getProjects().pipe(
+            tap((projects) => patchState(store, { projectList: projects })),
+            catchError((err) => {
+              console.error('Failed to load projects', err);
+              return of([]);
+            })
+          ))
+        )
+      ),
 
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          newState = { ...newState, ...parsed };
-        } catch (e) {
-          console.error('[TapestryStore] Failed to parse target project state', e);
-        }
+      // Single Project CRUD - Save
+      saveProject: rxMethod<{ id: string, name: string, data: any }>(
+        pipe(
+          tap(() => patchState(store, { isSaving: true })),
+          switchMap(({ id, name, data }) => projectService.updateProject(id, name, data).pipe(
+             tap(() => patchState(store, { isSaving: false })),
+             catchError((err) => {
+                 console.error('Auto-save failed', err);
+                 patchState(store, { isSaving: false });
+                 return of(null);
+             })
+          ))
+        )
+      )
+    };
+  }),
+  // 2. Complex Methods dependent on previous methods (like loadProjectList)
+  withMethods((store) => {
+    const projectService = inject(ProjectService);
+    
+    return {
+      createProject: rxMethod<string>(
+        pipe(
+          tap(() => patchState(store, { isLoading: true })),
+          switchMap((name) => projectService.createProject(name).pipe(
+            tap((project) => {
+              patchState(store, {
+                projectId: project.id,
+                projectName: project.name,
+                nodes: [],
+                edges: [],
+                messages: [],
+                isLoading: false
+              });
+              store.loadProjectList(); 
+            }),
+            catchError((err) => {
+              console.error('Failed to create project', err);
+              patchState(store, { isLoading: false });
+              return of(null);
+            })
+          ))
+        )
+      ),
+
+      loadProject: rxMethod<string>(
+        pipe(
+          tap(() => patchState(store, { isLoading: true })),
+          switchMap((id) => projectService.getProject(id).pipe(
+            tap((project) => {
+              const data = project.data || {};
+              patchState(store, {
+                projectId: project.id,
+                projectName: project.name,
+                nodes: data.nodes || project.nodes || [],
+                edges: data.edges || project.edges || [],
+                messages: data.messages || project.messages || [],
+                activePerspective: (data.activePerspective as PerspectiveType) || (project.activePerspective as PerspectiveType) || 'abstract',
+                isLoading: false
+              });
+            }),
+            catchError((err) => {
+              console.error('Failed to load project', err);
+              patchState(store, { isLoading: false });
+              return of(null);
+            })
+          ))
+        )
+      ),
+
+      deleteProject: rxMethod<string>(
+        pipe(
+          tap(() => patchState(store, { isLoading: true })),
+          switchMap((id) => projectService.deleteProject(id).pipe(
+            tap(() => {
+              patchState(store, (state) => ({
+                isLoading: false,
+                projectList: state.projectList.filter(p => p.id !== id),
+                ...(state.projectId === id ? {
+                  projectId: null,
+                  projectName: 'No Project Selected',
+                  nodes: [],
+                  edges: [],
+                  messages: []
+                } : {})
+              }));
+            }),
+            catchError((err) => {
+              console.error('Failed to delete project', err);
+              patchState(store, { isLoading: false });
+              return of(null);
+            })
+          ))
+        )
+      )
+    };
+  }),
+  // 3. Aliases for Component Usage
+  withMethods((store) => ({
+      startNewProject(name: string) {
+        store.createProject(name);
+      },
+      switchProject(projectId: string) {
+        store.loadProject(projectId);
       }
-
-      // 2. Update state
-      patchState(store, (state) => ({
-        ...state,
-        ...newState,
-        projectList: state.projectList // Keep existing list
-      }));
-
-      // 3. Update active key
-      localStorage.setItem(ACTIVE_PROJECT_KEY, projectName);
-    },
-    deleteProject(projectName: string) {
-      patchState(store, (state) => {
-        const newProjectList = state.projectList.filter(p => p !== projectName);
-        
-        // Remove from localStorage
-        if (typeof localStorage !== 'undefined') {
-          const storageKey = PROJECT_PREFIX + projectName;
-          localStorage.removeItem(storageKey);
-          localStorage.setItem(PROJECT_LIST_KEY, JSON.stringify(newProjectList));
-        }
-
-        // If deleting current project, switch to default or first available
-        if (state.projectName === projectName) {
-          const nextProject = newProjectList.length > 0 ? newProjectList[0] : 'default-project';
-          
-          // If we are falling back to 'default-project' and it wasn't in the list (e.g. list empty), ensure it is created
-          if (newProjectList.length === 0 && nextProject === 'default-project') {
-             // We can just return state and let a subsequent effect or action handle init, 
-             // but simpler to just set it up here.
-             // Actually, simplest is to just perform a switchProject-like logic effectively by returning new state
-             // But we need to load that new project's data.
-             
-             // To keep it simple: we will just update the list and active project name here.
-             // The effect or a separate call might be needed to load data if we want to be pure.
-             // But `withMethods` allows us to call other methods? No, not easily within patchState.
-             
-             // Let's do the side effect of loading the "next" project data here manually or assume switchProject will be called?
-             // We cannot call `switchProject` from within `patchState`.
-             // So we have to duplicate the load logic or move it to a helper.
-             
-             // Refactoring load logic is better, but for now let's just do a tailored load for the next project.
-             
-             let nextState: Partial<TapestryState> = {
-                projectName: nextProject,
-                nodes: [],
-                edges: [],
-                messages: [],
-                activePerspective: 'abstract' as PerspectiveType
-             };
-
-             if (typeof localStorage !== 'undefined') {
-                const nextKey = PROJECT_PREFIX + nextProject;
-                const stored = localStorage.getItem(nextKey);
-                if (stored) {
-                    try {
-                        const parsed = JSON.parse(stored);
-                        nextState = { ...nextState, ...parsed };
-                    } catch(e) { /* ignore */ }
-                }
-                localStorage.setItem(ACTIVE_PROJECT_KEY, nextProject);
-                
-                // If the list was empty and we forced default, make sure default is in the saved list
-                if (newProjectList.length === 0) {
-                    newProjectList.push('default-project');
-                    localStorage.setItem(PROJECT_LIST_KEY, JSON.stringify(newProjectList));
-                }
-             }
-             
-             return {
-                 ...state,
-                 ...nextState,
-                 projectList: newProjectList
-             };
-          }
-          
-           // Normal switch where next project exists
-           let nextState: Partial<TapestryState> = {
-                projectName: nextProject,
-                nodes: [],
-                edges: [],
-                messages: [],
-                activePerspective: 'abstract' as PerspectiveType
-             };
-
-             if (typeof localStorage !== 'undefined') {
-                const nextKey = PROJECT_PREFIX + nextProject;
-                const stored = localStorage.getItem(nextKey);
-                if (stored) {
-                    try {
-                        const parsed = JSON.parse(stored);
-                        nextState = { ...nextState, ...parsed };
-                    } catch(e) { /* ignore */ }
-                }
-                localStorage.setItem(ACTIVE_PROJECT_KEY, nextProject);
-             }
-             
-             return {
-                 ...state,
-                 ...nextState,
-                 projectList: newProjectList
-             };
-
-        }
-
-        return {
-            ...state,
-            projectList: newProjectList
-        };
-      });
-    }
   })),
+  // 4. Hooks & Effects
   withHooks({
     onInit(store) {
+      const authService = inject(AuthService);
+
+      // A. Auto-load project list when user logs in
       effect(() => {
-        const state = {
-          // We don't necessarily need to store projectName inside the project blob, but it doesn't hurt.
-          projectName: store.projectName(),
+        const user = authService.currentUser();
+        if (user) {
+          store.loadProjectList();
+        } else {
+            // Clear state on logout
+            patchState(store, {
+                projectId: null,
+                projectName: 'No Project Selected',
+                projectList: [],
+                nodes: [],
+                edges: [],
+                messages: []
+            });
+        }
+      });
+
+      // B. Auto-save Effect
+      // Create a signal that represents the complete saveable state
+      const saveState = computed(() => ({
+        id: store.projectId(),
+        name: store.projectName(),
+        data: {
           nodes: store.nodes(),
           edges: store.edges(),
           messages: store.messages(),
           activePerspective: store.activePerspective()
-        };
-        
-        if (typeof localStorage !== 'undefined') {
-             const storageKey = PROJECT_PREFIX + store.projectName();
-             const serialized = JSON.stringify(state);
-             console.log(`[TapestryStore] Saving state to localStorage key '${storageKey}' (${serialized.length} bytes)`);
-             localStorage.setItem(storageKey, serialized);
-             
-             // Also ensure active project is set (redundant but safe)
-             localStorage.setItem(ACTIVE_PROJECT_KEY, store.projectName());
         }
-      });
+      }));
+
+      // Use rxMethod to pipe this signal through debounce and filter
+      rxMethod<{ id: string | null, name: string, data: any }>(
+        pipe(
+          debounceTime(2000), // Wait for 2 seconds of inactivity
+          filter((state): state is { id: string, name: string, data: any } => !!state.id), // Only save if we have a project ID
+          tap((state) => {
+            console.log('[TapestryStore] Auto-saving project...', state.id);
+            store.saveProject(state);
+          })
+        )
+      )(saveState);
     }
   })
 );
