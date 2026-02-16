@@ -17,10 +17,13 @@
   <div class="input-area">
     <mat-form-field appearance="outline" class="chat-input-field">
       <mat-label>Weave your tale...</mat-label>
-      <input matInput 
-             [(ngModel)]="userInput" 
-             (keyup.enter)="onSend()"
-             [disabled]="loomResource.isLoading()">
+      <textarea matInput
+                cdkTextareaAutosize
+                cdkAutosizeMinRows="3"
+                cdkAutosizeMaxRows="6"
+                [(ngModel)]="userInput"
+                (keydown.enter)="onEnter($event)"
+                [disabled]="loomResource.isLoading()"></textarea>
       <button mat-icon-button matSuffix (click)="toggleListening()" [color]="isListening() ? 'warn' : ''" [class.listening]="isListening()" [disabled]="loomResource.isLoading()" class="mic-button">
         <mat-icon>{{ isListening() ? 'mic' : 'mic_none' }}</mat-icon>
       </button>
