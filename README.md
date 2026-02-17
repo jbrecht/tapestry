@@ -57,3 +57,32 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+## Environments
+
+This application is configured to run in two environments:
+
+### Development
+
+- **URL**: `http://localhost:4200`
+- **API URL**: `http://localhost:3000` (Local Node.js server)
+- **Command**: `ng serve`
+
+### Production (GitHub Pages)
+
+- **URL**: [https://jbrecht.github.io/tapestry/](https://jbrecht.github.io/tapestry/)
+- **API URL**: `https://tapestry-serve-production.up.railway.app` (Railway Production Server)
+- **Command**: `npm run deploy`
+
+## Deployment
+
+To deploy the application to GitHub Pages:
+
+1. Ensure all changes are committed.
+2. Run the deployment script:
+   ```bash
+   npm run deploy
+   ```
+   This script builds the application for production with the correct base HREF (`/tapestry/`) and pushes the output to the `gh-pages` branch.
+
+> **Note**: The deployment process requires a Node.js version compatible with Angular CLI v21 (`^20.19.0` or `>=22.12.0`). If you encounter build errors, check your Node.js version.

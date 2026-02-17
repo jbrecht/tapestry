@@ -14,11 +14,13 @@ export interface Project {
   activePerspective?: string;
 }
 
+import { environment } from '../../environments/environment';
+
 @Injectable({
   providedIn: 'root'
 })
 export class ProjectService {
-  private apiUrl = 'http://localhost:3000/projects';
+  private apiUrl = `${environment.apiUrl}/projects`;
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 

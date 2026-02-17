@@ -14,11 +14,13 @@ interface AuthResponse {
   user: User;
 }
 
+import { environment } from '../../environments/environment';
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:3000/auth';
+  private apiUrl = `${environment.apiUrl}/auth`;
   private readonly TOKEN_KEY = 'tapestry_auth_token';
   private readonly USER_KEY = 'tapestry_user';
 
