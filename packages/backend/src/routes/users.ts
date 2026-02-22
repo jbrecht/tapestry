@@ -32,18 +32,21 @@ router.get('/:id/usage', authenticateToken, requireAdmin, (req, res) => {
 
     let totalNodes = 0;
     let totalEdges = 0;
-    let totalMessages = 0;
 
     projects.forEach(project => {
       try {
         const data = JSON.parse(project.data || '{}');
         totalNodes += (data.nodes || []).length;
         totalEdges += (data.edges || []).length;
-        totalMessages += (data.messages || []).length;
       } catch (e) {
         console.error('Failed to parse project data for usage stats', e);
       }
     });
+    
+    // Count total messages directly from the database using SQL
+    const messagesCountStmt = db.prepare('SELECT COUNT(*) as count FROM messages WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?)');
+    const messagesCountResult = messagesCountStmt.get(id) as { count: number };
+    const totalMessages = messagesCountResult.count;
 
     res.json({
       projectCount: projects.length,

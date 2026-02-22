@@ -32,10 +32,29 @@ router.post('/', (req: AuthRequest, res) => {
 
   try {
     const id = uuidv4();
+    let projectMessages: any[] = [];
+    
+    // Extract messages if present
+    if (data && data.messages) {
+      projectMessages = data.messages;
+      delete data.messages;
+    }
+    
     const projectData = data ? JSON.stringify(data) : JSON.stringify({});
 
     const stmt = db.prepare('INSERT INTO projects (id, user_id, name, data) VALUES (?, ?, ?, ?)');
     stmt.run(id, userId, name, projectData);
+    
+    // Insert messages
+    if (projectMessages.length > 0) {
+      const insertMessageStmt = db.prepare('INSERT INTO messages (id, project_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)');
+      db.transaction(() => {
+        for (const msg of projectMessages) {
+          const timestampStr = msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString();
+          insertMessageStmt.run(uuidv4(), id, msg.role || 'user', msg.content || '', timestampStr);
+        }
+      })();
+    }
 
     res.status(201).json({ id, name, updated_at: new Date().toISOString() });
   } catch (error) {
@@ -59,6 +78,18 @@ router.get('/:id', (req: AuthRequest, res) => {
 
     // Parse the JSON data string back to an object
     project.data = JSON.parse(project.data);
+    
+    // Fetch messages for this project
+    const messagesStmt = db.prepare('SELECT role, content, created_at as timestamp FROM messages WHERE project_id = ? ORDER BY created_at ASC');
+    const messages = messagesStmt.all(id) as any[];
+    
+    // Reattach messages to the data payload for the frontend
+    project.data.messages = messages.map(m => ({
+      role: m.role,
+      content: m.content,
+      timestamp: new Date(m.timestamp).getTime() // Convert ISO string back to JS timestamp
+    }));
+
     res.json(project);
   } catch (error) {
     console.error('Get Project Error:', error);
@@ -91,8 +122,31 @@ router.put('/:id', (req: AuthRequest, res) => {
     }
 
     if (data) {
+      let projectMessages: any[] | null = null;
+      if (data.messages) {
+        projectMessages = data.messages;
+        delete data.messages;
+      }
+      
       updates.push('data = ?');
       values.push(JSON.stringify(data)); // Store as JSON string in DB
+      
+      // Update messages if they were provided
+      if (projectMessages !== null) {
+        db.transaction(() => {
+          // Simplest sync: Delete all and re-insert 
+          const deleteMessagesStmt = db.prepare('DELETE FROM messages WHERE project_id = ?');
+          deleteMessagesStmt.run(id);
+          
+          if (projectMessages.length > 0) {
+            const insertMessageStmt = db.prepare('INSERT INTO messages (id, project_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)');
+            for (const msg of projectMessages) {
+              const timestampStr = msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString();
+              insertMessageStmt.run(uuidv4(), id, msg.role || 'user', msg.content || '', timestampStr);
+            }
+          }
+        })();
+      }
     }
 
     if (updates.length > 0) {

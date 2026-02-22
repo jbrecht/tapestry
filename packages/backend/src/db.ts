@@ -38,6 +38,17 @@ const initSchema = () => {
     );
     
     CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
+
+    CREATE TABLE IF NOT EXISTS messages (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_messages_project_id ON messages(project_id);
   `);
 
   // Simple migration for existing DB
@@ -46,6 +57,38 @@ const initSchema = () => {
     console.log('Migrated users table to include is_admin column.');
   } catch (err: any) {
     // If it throws, it means the column already exists, which is fine!
+  }
+
+  // Migrate messages out of `projects.data` JSON into the `messages` table
+  const messagesTableCheck = db.prepare("SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name='messages'").get() as { count: number };
+  if (messagesTableCheck.count > 0) {
+    const projectsWithMessages = db.prepare(`SELECT id, data FROM projects WHERE json_extract(data, '$.messages') IS NOT NULL`).all() as any[];
+    if (projectsWithMessages.length > 0) {
+      console.log(`Migrating messages for ${projectsWithMessages.length} projects...`);
+      const insertMessageStmt = db.prepare('INSERT INTO messages (id, project_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)');
+      const updateProjectStmt = db.prepare('UPDATE projects SET data = ? WHERE id = ?');
+      
+      db.transaction(() => {
+        for (const project of projectsWithMessages) {
+          try {
+            const data = JSON.parse(project.data);
+            if (data.messages && Array.isArray(data.messages)) {
+              for (const msg of data.messages) {
+                // Determine a timestamp (use current time if missing or invalid to avoid db errors)
+                const timestampStr = msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString();
+                insertMessageStmt.run(uuidv4(), project.id, msg.role || 'user', msg.content || '', timestampStr);
+              }
+              // Remove messages from the JSON blob
+              delete data.messages;
+              updateProjectStmt.run(JSON.stringify(data), project.id);
+            }
+          } catch (e) {
+            console.error(`Error migrating messages for project ${project.id}`, e);
+          }
+        }
+      })();
+      console.log(`Migrated messages out of JSON blobs.`);
+    }
   }
 
   // Seed default admin account
