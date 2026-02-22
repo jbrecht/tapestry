@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { MatTableModule } from '@angular/material/table';
@@ -21,14 +21,14 @@ export class AdminDashboardComponent implements OnInit {
   private authService = inject(AuthService);
   private apiUrl = `${environment.apiUrl}/users`;
   
-  users: IUser[] = [];
+  users = signal<IUser[]>([]);
   displayedColumns: string[] = ['id', 'username', 'role', 'created'];
 
   ngOnInit() {
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
-    this.http.get<IUser[]>(this.apiUrl, { headers }).subscribe(users => {
-      this.users = users;
-      console.log('users: ', this.users);
+    this.http.get<IUser[]>(this.apiUrl, { headers }).subscribe(data => {
+      this.users.set(data);
+      console.log('users: ', this.users());
     });
   }
 }
