@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -24,12 +24,13 @@ import { MatTabsModule } from '@angular/material/tabs';
   styleUrl: './login-page.component.scss'
 })
 export class LoginPageComponent {
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
   loginData = { username: '', password: '' };
   registerData = { username: '', password: '' };
   loading = signal(false);
   errorMessage = signal('');
-
-  constructor(private authService: AuthService, private router: Router) {}
 
   onLogin() {
     this.loading.set(true);

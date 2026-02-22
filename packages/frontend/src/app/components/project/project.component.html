@@ -10,14 +10,14 @@
     <span>New Project...</span>
   </button>
 
-  <mat-divider></mat-divider>
+  <mat-divider />
 
   <button mat-menu-item [matMenuTriggerFor]="projectsSubMenu">
     <mat-icon>list</mat-icon>
     <span>Switch Project</span>
   </button>
 
-  <mat-divider></mat-divider>
+  <mat-divider />
 
   <button mat-menu-item (click)="onDeleteProject()" [disabled]="!store.projectId()">
     <mat-icon>delete</mat-icon>

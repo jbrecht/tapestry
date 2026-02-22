@@ -1,13 +1,13 @@
 import { Routes } from '@angular/router';
-import { TapestryComponent } from './tapestry/tapestry.component';
-import { LoginPageComponent } from './pages/login-page.component';
+
+
 import { authGuard } from './auth.guard';
 import { adminGuard } from './guards/admin.guard';
-import { AdminDashboardComponent } from './components/admin-dashboard/admin-dashboard.component';
+
 
 export const routes: Routes = [
-  { path: 'login', component: LoginPageComponent },
-  { path: 'admin', component: AdminDashboardComponent, canActivate: [authGuard, adminGuard] },
-  { path: '', component: TapestryComponent, canActivate: [authGuard] },
+  { path: 'login', loadComponent: () => import('./pages/login-page.component').then(m => m.LoginPageComponent) },
+  { path: 'admin', loadComponent: () => import('./components/admin-dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent), canActivate: [authGuard, adminGuard] },
+  { path: '', loadComponent: () => import('./tapestry/tapestry.component').then(m => m.TapestryComponent), canActivate: [authGuard] },
   { path: '**', redirectTo: '' }
 ];

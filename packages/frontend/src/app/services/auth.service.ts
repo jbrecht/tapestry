@@ -1,4 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap, catchError } from 'rxjs/operators';
@@ -21,6 +21,9 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class AuthService {
+  private http = inject(HttpClient);
+  private router = inject(Router);
+
   private apiUrl = `${environment.apiUrl}/auth`;
   private readonly TOKEN_KEY = 'tapestry_auth_token';
   private readonly USER_KEY = 'tapestry_user';
@@ -28,8 +31,6 @@ export class AuthService {
   // Signals
   currentUser = signal<User | null>(this.getUserFromStorage());
   isLoggedIn = computed(() => !!this.currentUser());
-
-  constructor(private http: HttpClient, private router: Router) {}
 
   login(credentials: { username: string; password: string }): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(

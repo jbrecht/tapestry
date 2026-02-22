@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, signal, effect, ElementRef, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -30,7 +30,7 @@ export class ChatComponent {
   protected store = inject(TapestryStore);
   private http = inject(HttpClient);
 
-  @ViewChild('messageList') messageList!: ElementRef<HTMLDivElement>;
+  readonly messageList = viewChild.required<ElementRef<HTMLDivElement>>('messageList');
 
   // Local UI State
   userInput = signal('');
@@ -144,8 +144,9 @@ export class ChatComponent {
   }
 
   private scrollToBottom() {
-      if (this.messageList) {
-          const el = this.messageList.nativeElement;
+      const messageList = this.messageList();
+      if (messageList) {
+          const el = messageList.nativeElement;
           el.scrollTop = el.scrollHeight;
       }
   }

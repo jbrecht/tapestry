@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { RouterOutlet } from '@angular/router';
 import { environment } from '../environments/environment';
@@ -11,9 +11,11 @@ import { environment } from '../environments/environment';
   styleUrl: './app.scss'
 })
 export class App {
+  private http = inject(HttpClient);
+
   protected readonly title = signal('tapestry');
 
-  constructor(private http: HttpClient) {
+  constructor() {
     this.checkServerStatus();
   }
 

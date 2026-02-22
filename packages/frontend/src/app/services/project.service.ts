@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
@@ -20,9 +20,10 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class ProjectService {
-  private apiUrl = `${environment.apiUrl}/projects`;
+  private http = inject(HttpClient);
+  private authService = inject(AuthService);
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  private apiUrl = `${environment.apiUrl}/projects`;
 
   private getHeaders() {
     const token = this.authService.getToken();
