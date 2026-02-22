@@ -7,6 +7,7 @@ import { of, Observable } from 'rxjs';
 export interface User {
   id: string;
   username: string;
+  isAdmin?: boolean;
 }
 
 interface AuthResponse {

@@ -22,8 +22,9 @@ router.post('/register', async (req, res) => {
     const stmt = db.prepare('INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)');
     stmt.run(userId, username, hashedPassword);
 
-    const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: '1h' });
-    res.status(201).json({ token, user: { id: userId, username } });
+    const payload = { id: userId, username, isAdmin: false };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+    res.status(201).json({ token, user: payload });
   } catch (error: any) {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(409).json({ error: 'Username already exists' });
@@ -54,8 +55,9 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token, user: { id: user.id, username: user.username } });
+    const payload = { id: user.id, username: user.username, isAdmin: !!user.is_admin };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+    res.json({ token, user: payload });
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ error: 'Internal server error' });

@@ -7,6 +7,7 @@ import { TapestryState } from "./state.js";
 import { extractionNode } from "./extractor.js";
 import authRoutes from "./routes/auth.js";
 import projectRoutes from "./routes/projects.js";
+import userRoutes from "./routes/users.js";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use(express.json());
 // Routes
 app.use("/auth", authRoutes);
 app.use("/projects", projectRoutes);
+app.use("/users", userRoutes);
 
 app.get("/server-test", (req, res) => {
   res.send("Server available");

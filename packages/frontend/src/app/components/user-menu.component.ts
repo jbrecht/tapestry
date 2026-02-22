@@ -4,11 +4,12 @@ import { AuthService } from '../services/auth.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-user-menu',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatMenuModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatMenuModule, RouterModule],
   template: `
     <div *ngIf="authService.currentUser() as user" class="user-menu">
       <button mat-button [matMenuTriggerFor]="menu">
@@ -16,6 +17,10 @@ import { MatMenuModule } from '@angular/material/menu';
         {{ user.username }}
       </button>
       <mat-menu #menu="matMenu">
+        <button mat-menu-item routerLink="/admin" *ngIf="user.isAdmin">
+          <mat-icon>admin_panel_settings</mat-icon>
+          <span>Admin Dashboard</span>
+        </button>
         <button mat-menu-item (click)="logout()">
           <mat-icon>logout</mat-icon>
           <span>Logout</span>

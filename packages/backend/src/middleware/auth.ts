@@ -7,6 +7,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     username: string;
+    isAdmin: boolean;
   };
 }
 
@@ -25,4 +26,11 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     req.user = user;
     next();
   });
+};
+
+export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user || !req.user.isAdmin) {
+    return res.status(403).json({ error: 'Administrator access required' });
+  }
+  next();
 };
