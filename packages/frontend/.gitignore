@@ -43,6 +43,3 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 .gemini/
-# backend
-.env
-packages/backend/dist
