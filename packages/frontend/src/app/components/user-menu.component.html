@@ -1,16 +1,20 @@
-<div *ngIf="authService.currentUser() as user" class="user-menu">
-  <button mat-button [matMenuTriggerFor]="menu">
-    <mat-icon>person</mat-icon>
-    {{ user.username }}
-  </button>
-  <mat-menu #menu="matMenu">
-    <button mat-menu-item routerLink="/admin" *ngIf="user.isAdmin">
-      <mat-icon>admin_panel_settings</mat-icon>
-      <span>Admin Dashboard</span>
+@if (authService.currentUser(); as user) {
+  <div class="user-menu">
+    <button mat-button [matMenuTriggerFor]="menu">
+      <mat-icon>person</mat-icon>
+      {{ user.username }}
     </button>
-    <button mat-menu-item (click)="logout()">
-      <mat-icon>logout</mat-icon>
-      <span>Logout</span>
-    </button>
-  </mat-menu>
-</div>
+    <mat-menu #menu="matMenu">
+      @if (user.isAdmin) {
+        <button mat-menu-item routerLink="/admin">
+          <mat-icon>admin_panel_settings</mat-icon>
+          <span>Admin Dashboard</span>
+        </button>
+      }
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </button>
+    </mat-menu>
+  </div>
+}

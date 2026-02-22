@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,13 +10,12 @@ import { MatInputModule } from '@angular/material/input';
   selector: 'app-project-create-dialog',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
-    MatDialogModule, 
+    MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule
-  ],
+],
   templateUrl: './project-create-dialog.component.html',
   styleUrl: './project-create-dialog.component.scss'
 })

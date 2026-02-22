@@ -9,16 +9,16 @@
     <mat-icon>add</mat-icon>
     <span>New Project...</span>
   </button>
-  
+
   <mat-divider></mat-divider>
 
   <button mat-menu-item [matMenuTriggerFor]="projectsSubMenu">
     <mat-icon>list</mat-icon>
     <span>Switch Project</span>
   </button>
-  
+
   <mat-divider></mat-divider>
-  
+
   <button mat-menu-item (click)="onDeleteProject()" [disabled]="!store.projectId()">
     <mat-icon>delete</mat-icon>
     <span>Delete Current Project</span>
@@ -27,15 +27,21 @@
 
 <mat-menu #projectsSubMenu="matMenu">
   <div class="project-list-container">
-    <button mat-menu-item *ngFor="let project of store.projectList()" 
-            (click)="onSwitchProject(project.id)"
-            [class.selected]="project.id === store.projectId()">
-      <mat-icon *ngIf="project.id === store.projectId()">check</mat-icon>
-      <span [class.inset]="project.id !== store.projectId()">{{ project.name }}</span>
-    </button>
-    <div *ngIf="store.projectList().length === 0" class="no-projects">
-      No projects available
-    </div>
+    @for (project of store.projectList(); track project) {
+      <button mat-menu-item
+        (click)="onSwitchProject(project.id)"
+        [class.selected]="project.id === store.projectId()">
+        @if (project.id === store.projectId()) {
+          <mat-icon>check</mat-icon>
+        }
+        <span [class.inset]="project.id !== store.projectId()">{{ project.name }}</span>
+      </button>
+    }
+    @if (store.projectList().length === 0) {
+      <div class="no-projects">
+        No projects available
+      </div>
+    }
   </div>
 </mat-menu>
 

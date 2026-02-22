@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,12 +14,11 @@ import { ProjectCreateDialogComponent } from './project-create-dialog.component'
   selector: 'app-project',
   standalone: true,
   imports: [
-    CommonModule, 
     MatMenuModule,
     MatIconModule,
     MatButtonModule,
     MatDividerModule
-  ],
+],
   templateUrl: './project.component.html',
   styleUrl: './project.component.scss'
 })
