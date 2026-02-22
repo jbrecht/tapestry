@@ -17,37 +17,8 @@ import { MatInputModule } from '@angular/material/input';
     MatFormFieldModule,
     MatInputModule
   ],
-  template: `
-    <h2 mat-dialog-title>New Project</h2>
-    <mat-dialog-content>
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Project Name</mat-label>
-        <input matInput 
-               type="text" 
-               [ngModel]="projectName()" 
-               (ngModelChange)="projectName.set($event)"
-               (keyup.enter)="projectName().trim() && dialogRef.close(projectName().trim())"
-               autoFocus>
-      </mat-form-field>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancel</button>
-      <button mat-button color="primary" 
-              [mat-dialog-close]="projectName().trim()" 
-              [disabled]="!projectName().trim()">
-        Create
-      </button>
-    </mat-dialog-actions>
-  `,
-  styles: [`
-    .full-width {
-      width: 100%;
-    }
-    mat-dialog-content {
-      min-width: 300px;
-      padding-top: 10px; /* spacing for outline field */
-    }
-  `]
+  templateUrl: './project-create-dialog.component.html',
+  styleUrl: './project-create-dialog.component.scss'
 })
 export class ProjectCreateDialogComponent {
   projectName = signal('');

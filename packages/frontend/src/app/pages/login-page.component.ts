@@ -21,77 +21,8 @@ import { MatTabsModule } from '@angular/material/tabs';
     MatButtonModule,
     MatTabsModule
   ],
-  template: `
-    <div class="login-container">
-      <mat-card>
-        <mat-card-header>
-          <mat-card-title>Tapestry Login</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <mat-tab-group>
-            <mat-tab label="Login">
-              <form (ngSubmit)="onLogin()">
-                <mat-form-field appearance="fill" class="full-width">
-                  <mat-label>Username</mat-label>
-                  <input matInput [(ngModel)]="loginData.username" name="username" required>
-                </mat-form-field>
-                <mat-form-field appearance="fill" class="full-width">
-                  <mat-label>Password</mat-label>
-                  <input matInput type="password" [(ngModel)]="loginData.password" name="password" required>
-                </mat-form-field>
-                <div class="error-message" *ngIf="errorMessage()">{{ errorMessage() }}</div>
-                <button mat-raised-button color="primary" type="submit" [disabled]="loading()">
-                  {{ loading() ? 'Logging in...' : 'Login' }}
-                </button>
-              </form>
-            </mat-tab>
-            <mat-tab label="Register">
-              <form (ngSubmit)="onRegister()">
-                <mat-form-field appearance="fill" class="full-width">
-                  <mat-label>Username</mat-label>
-                  <input matInput [(ngModel)]="registerData.username" name="username" required>
-                </mat-form-field>
-                <mat-form-field appearance="fill" class="full-width">
-                  <mat-label>Password</mat-label>
-                  <input matInput type="password" [(ngModel)]="registerData.password" name="password" required>
-                </mat-form-field>
-                <div class="error-message" *ngIf="errorMessage()">{{ errorMessage() }}</div>
-                <button mat-raised-button color="accent" type="submit" [disabled]="loading()">
-                  {{ loading() ? 'Registering...' : 'Register' }}
-                </button>
-              </form>
-            </mat-tab>
-          </mat-tab-group>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  `,
-  styles: [`
-    .login-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background-color: #f5f5f5;
-    }
-    mat-card {
-      width: 400px;
-      padding: 20px;
-    }
-    .full-width {
-      width: 100%;
-      margin-bottom: 10px;
-    }
-    form {
-      display: flex;
-      flex-direction: column;
-      padding-top: 20px;
-    }
-    .error-message {
-      color: red;
-      margin-bottom: 10px;
-    }
-  `]
+  templateUrl: './login-page.component.html',
+  styleUrl: './login-page.component.scss'
 })
 export class LoginPageComponent {
   loginData = { username: '', password: '' };

@@ -1,0 +1,47 @@
+.admin-container {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+header h2 {
+  margin: 0;
+  color: #333;
+  font-weight: 500;
+}
+.table-container {
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+table {
+  width: 100%;
+}
+.id-truncate {
+  display: inline-block;
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: monospace;
+  color: #666;
+  vertical-align: middle;
+}
+.role-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #e0e0e0;
+  color: #555;
+  font-size: 0.85em;
+}
+.role-badge.admin {
+  background: #e3f2fd;
+  color: #1565c0;
+  font-weight: 500;
+}
