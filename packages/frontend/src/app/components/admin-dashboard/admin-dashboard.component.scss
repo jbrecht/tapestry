@@ -45,3 +45,78 @@ table {
   color: #1565c0;
   font-weight: 500;
 }
+
+/* Expandable Row Styles */
+tr.user-detail-row {
+  height: 0;
+}
+tr.user-element-row:not(.user-expanded-row):hover {
+  background: whitesmoke;
+}
+tr.user-element-row:not(.user-expanded-row):active {
+  background: #efefef;
+}
+.user-element-row td {
+  border-bottom-width: 0;
+  cursor: pointer;
+}
+.user-detail-row td {
+  padding: 0;
+}
+.user-element-detail {
+  overflow: hidden;
+  display: flex;
+}
+
+/* Usage Report Styles */
+.usage-report {
+  padding: 16px 24px 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.usage-report h4 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+  font-weight: 500;
+  font-size: 1.1em;
+}
+.stats-grid {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.stat-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 120px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+.stat-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1976d2;
+}
+.stat-label {
+  font-size: 14px;
+  color: #666;
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.loading-stats {
+  padding: 20px 0;
+  color: #666;
+  font-style: italic;
+}

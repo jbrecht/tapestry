@@ -23,4 +23,39 @@ router.get('/', authenticateToken, requireAdmin, (req, res) => {
   }
 });
 
+router.get('/:id/usage', authenticateToken, requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const stmt = db.prepare('SELECT data FROM projects WHERE user_id = ?');
+    const projects = stmt.all(id) as any[];
+
+    let totalNodes = 0;
+    let totalEdges = 0;
+    let totalMessages = 0;
+
+    projects.forEach(project => {
+      try {
+        const data = JSON.parse(project.data || '{}');
+        totalNodes += (data.nodes || []).length;
+        totalEdges += (data.edges || []).length;
+        totalMessages += (data.messages || []).length;
+      } catch (e) {
+        console.error('Failed to parse project data for usage stats', e);
+      }
+    });
+
+    res.json({
+      projectCount: projects.length,
+      totalNodes,
+      totalEdges,
+      totalMessages
+    });
+
+  } catch (error) {
+    console.error('Fetch User Usage Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
