@@ -8,8 +8,10 @@
   "scripts": {
     "start": "npm run start:all",
     "start:all": "npx concurrently \"npm run dev -w @tapestry/backend\" \"npm start -w @tapestry/frontend\"",
+    "start:backend": "npm start -w @tapestry/backend",
     "build:all": "npm run build --workspaces --if-present",
-    "test:all": "npm run test --workspaces --if-present"
+    "test:all": "npm run test --workspaces --if-present",
+    "deploy:frontend": "npm run deploy -w @tapestry/frontend"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
