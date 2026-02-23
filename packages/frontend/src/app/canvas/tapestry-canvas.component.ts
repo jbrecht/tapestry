@@ -112,6 +112,13 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     // Setup Zoom
     const zoomBehavior = d3.zoom<HTMLCanvasElement, unknown>()
         .scaleExtent([0.1, 8])
+        .filter((event) => {
+            // If shift is held, prevent zoom/pan so drag can handle it
+            if (event.shiftKey) {
+                return false;
+            }
+            return event.type !== 'dblclick'; // Default d3.zoom filter behavior (except we allow mousedown)
+        })
         .on('zoom', (event) => {
             this.transform = event.transform;
             this.draw();
@@ -119,10 +126,58 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
 
     d3.select(canvas).call(zoomBehavior);
 
+        // Setup Drag
+    const dragBehavior = d3.drag<HTMLCanvasElement, unknown>()
+        .filter((event) => event.shiftKey) // Only drag if shift is held
+        .subject((event) => {
+            if (!this.simulation) return undefined;
+            
+            // Extract the local coordinates efficiently using D3's helper
+            // D3 drag events don't have .clientX, we have to look inside .sourceEvent
+            const [localX, localY] = d3.pointer(event.sourceEvent, canvas);
+
+            // Get transform-adjusted world coordinates
+            const worldX = (localX - this.transform.x) / this.transform.k;
+            const worldY = (localY - this.transform.y) / this.transform.k;
+
+            // Find the active node
+            const node = this.simulation.nodes().find(n => {
+                if (n.x === undefined || n.y === undefined) return false;
+                const dx = worldX - n.x;
+                const dy = worldY - n.y;
+                return (dx * dx + dy * dy) < (20 * 20); // hit test using radius
+            });
+            // subject must return an object with x and y for d3 drag, or null/undefined
+            return node ? node : undefined;
+        })
+        .on('start', (event) => {
+            const subject = event.subject as SimulationNode;
+            if (!subject) return;
+            if (!event.active && this.simulation) this.simulation.alphaTarget(0.3).restart();
+            subject.fx = subject.x;
+            subject.fy = subject.y;
+        })
+        .on('drag', (event) => {
+            const subject = event.subject as SimulationNode;
+            if (!subject) return;
+            // Because the subject gives us scaled coordinates but d3.drag expects raw displacement
+            // we have to adjust event.dx and event.dy via the current zoom scale
+            subject.fx! += event.dx / this.transform.k;
+            subject.fy! += event.dy / this.transform.k;
+        })
+        .on('end', (event) => {
+            const subject = event.subject as SimulationNode;
+            if (!subject) return;
+            if (!event.active && this.simulation) this.simulation.alphaTarget(0);
+            subject.fx = null;
+            subject.fy = null;
+        });
+
+    d3.select(canvas).call(dragBehavior as any);
+
     // Add mouse event listeners
-    // Note: d3-zoom handles mouse events for zooming/panning, but we still need our own for hover effects.
-    // However, d3-zoom consumes some events. We might need to listen to 'mousemove' on the canvas still, 
-    // but we need to be careful about coordinate systems.
+    // Note: d3-zoom and d3-drag handle mouse events for interaction
+    // We listen to 'mousemove' and 'mouseout' natively to build the custom hover tooltip states.
     canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
     canvas.addEventListener('mouseout', this.onMouseOut.bind(this));
 
