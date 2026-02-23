@@ -121,6 +121,15 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
         })
         .on('zoom', (event) => {
             this.transform = event.transform;
+            
+            // If a tooltip is open, we either need to move it, or hide it.
+            // Hiding it during pan/zoom is the standard behavior for D3 canvases
+            // as it prevents jittering and detached labels.
+            if (this.hoveredNode() || this.hoveredEdge()) {
+                 this.hoveredNode.set(null);
+                 this.hoveredEdge.set(null);
+            }
+            
             this.draw();
         });
 
@@ -205,15 +214,24 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
 
     // We can't simply take clientX/Y because d3-zoom might be active.
     // But we are listening to native mousemove.
-    const rect = this.canvasRef()!.nativeElement.getBoundingClientRect();
-    const clientX = event.clientX - rect.left;
-    const clientY = event.clientY - rect.top;
+    const canvas = this.canvasRef()!.nativeElement;
+    const canvasRect = canvas.getBoundingClientRect();
+    const containerRect = canvas.parentElement!.getBoundingClientRect();
+    
+    // Canvas-local coordinates for D3 physics hit testing
+    const localX = event.clientX - canvasRect.left;
+    const localY = event.clientY - canvasRect.top;
     
     // Apply inverse transform to get world coordinates
-    const worldX = (clientX - this.transform.x) / this.transform.k;
-    const worldY = (clientY - this.transform.y) / this.transform.k;
+    const worldX = (localX - this.transform.x) / this.transform.k;
+    const worldY = (localY - this.transform.y) / this.transform.k;
     
-    this.mousePosition = { x: worldX, y: worldY };
+    // HTML Tooltips live in the DOM over the canvas container, 
+    // so they need container-relative coordinates, NOT world coordinates!
+    this.mousePosition = { 
+        x: event.clientX - containerRect.left, 
+        y: event.clientY - containerRect.top 
+    };
 
     // Find node under mouse using WORLD coordinates
     const node = this.simulation.nodes().find(n => {
