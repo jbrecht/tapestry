@@ -15,6 +15,12 @@
   border-bottom: 1px solid var(--border-color, #e0e0e0);
   flex-shrink: 0;
 
+  .left-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
   .right-section {
     display: flex;
     align-items: center;

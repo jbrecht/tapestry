@@ -1,6 +1,7 @@
 <header class="top-bar">
   <div class="left-section">
     <app-project />
+    <app-perspective-switcher />
   </div>
   <div class="right-section">
     <app-tapestry-stats />
@@ -12,7 +13,14 @@
     <app-chat />
   </mat-drawer>
   <mat-drawer-content class="main-content">
-
-    <app-tapestry-canvas />
+    @if (store.activePerspective() === 'abstract') {
+      <app-tapestry-canvas />
+    } @else if (store.activePerspective() === 'timeline') {
+      <app-tapestry-timeline />
+    } @else {
+      <div style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; color: #666;">
+        <h2>The {{ store.activePerspective() }} view is under construction.</h2>
+      </div>
+    }
   </mat-drawer-content>
 </mat-drawer-container>
