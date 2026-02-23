@@ -1,5 +1,17 @@
 <div class="canvas-container">
-  <h2>Tapestry Canvas</h2>
+  <div class="canvas-header">
+    <h2>Tapestry Canvas</h2>
+    <div class="canvas-controls">
+      <label class="density-slider">
+        Density:
+        <input type="range" min="1" max="100" [value]="graphDensity()" (input)="graphDensity.set(slider.valueAsNumber)" #slider />
+      </label>
+      <label>
+        <input type="checkbox" [checked]="showLabels()" (change)="showLabels.set(!showLabels())" />
+        Show Labels
+      </label>
+    </div>
+  </div>
   <canvas #graphCanvas width="800" height="600"></canvas>
 
   @if (hoveredNode(); as node) {

@@ -29,6 +29,8 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
   
   protected hoveredNode = signal<SimulationNode | null>(null);
   protected hoveredEdge = signal<SimulationLink | null>(null);
+  protected showLabels = signal<boolean>(true);
+  protected graphDensity = signal<number>(50); // 1 to 100
   protected mousePosition = { x: 0, y: 0 };
 
   constructor() {
@@ -39,6 +41,39 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
 
       if (this.ctx) {
          this.updateSimulation(nodes, edges, perspective);
+      }
+    });
+
+    effect(() => {
+      // Track the showLabels signal
+      this.showLabels();
+      // Redraw canvas if context acts
+      if (this.ctx) {
+        requestAnimationFrame(() => this.draw());
+      }
+    });
+
+    effect(() => {
+      const density = this.graphDensity();
+      
+      if (this.simulation) {
+          // Map 1-100 density to physical forces.
+          // Lower density = nodes pushed further apart (stronger negative charge, longer links)
+          // Higher density = nodes packed tighter.
+          // Note: The slider value '50' is default. Range 1 - 100
+          
+          // Inverse relationship: High slider value -> low charge magnitude, low distance
+          const chargeStrength = -1500 + (density * 12); // e.g. 50 -> -900, 1 -> -1488, 100 -> -300
+          const linkDistance = 150 - density; // e.g. 50 -> 100, 1 -> 149, 100 -> 50
+
+          this.simulation.force('charge', d3.forceManyBody().strength(chargeStrength));
+          
+          const linkForce = this.simulation.force('link') as d3.ForceLink<SimulationNode, SimulationLink>;
+          if (linkForce) {
+             linkForce.distance(linkDistance);
+          }
+          
+          this.simulation.alpha(1).restart();
       }
     });
   }
@@ -235,10 +270,10 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     if (!this.simulation) {
         this.simulation = d3.forceSimulation<SimulationNode, SimulationLink>(this.nodes)
             .force('link', d3.forceLink<SimulationNode, SimulationLink>(this.links).id((d: SimulationNode) => d.id).distance(100))
-            .force('charge', d3.forceManyBody().strength(-300))
+            .force('charge', d3.forceManyBody().strength(-900))
             .force('x', d3.forceX(this.width / 2).strength(0.05))
             .force('y', d3.forceY(this.height / 2).strength(0.05))
-            .force('collide', d3.forceCollide().radius(30))
+            .force('collide', d3.forceCollide().radius(50))
             .on('tick', () => this.draw());
     } else {
         this.simulation.nodes(this.nodes);
@@ -258,6 +293,34 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     ctx.translate(this.transform.x, this.transform.y);
     ctx.scale(this.transform.k, this.transform.k);
 
+    const hn = this.hoveredNode();
+    const he = this.hoveredEdge();
+    const showLabels = this.showLabels();
+
+    const highlightNodes = new Set<SimulationNode>();
+    const highlightEdges = new Set<SimulationLink>();
+
+    if (hn) {
+       highlightNodes.add(hn);
+       for (const link of this.links) {
+           const s = link.source as unknown as SimulationNode;
+           const t = link.target as unknown as SimulationNode;
+           if (s === hn || t === hn) {
+               highlightEdges.add(link);
+               highlightNodes.add(s);
+               highlightNodes.add(t);
+           }
+       }
+    } else if (he) {
+       const s = he.source as unknown as SimulationNode;
+       const t = he.target as unknown as SimulationNode;
+       highlightEdges.add(he);
+       highlightNodes.add(s);
+       highlightNodes.add(t);
+    }
+    
+    const isHighlightMode = highlightNodes.size > 0;
+
     // Draw Links
     ctx.lineCap = 'round';
     for (const link of this.links) {
@@ -265,13 +328,16 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
         const source = link.source as unknown as SimulationNode;
         const target = link.target as unknown as SimulationNode;
         
-        const isHovered = this.hoveredEdge() === link;
+        const isHovered = he === link;
+        const isHighlighted = highlightEdges.has(link);
 
         if (source.x !== undefined && source.y !== undefined && target.x !== undefined && target.y !== undefined) {
              ctx.beginPath();
              ctx.moveTo(source.x, source.y);
              ctx.lineTo(target.x, target.y);
              
+             ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.1 : 1.0;
+
              if (isHovered) {
                  ctx.strokeStyle = '#555';
                  ctx.lineWidth = 4;
@@ -286,9 +352,10 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
              
              ctx.stroke();
              
-             // Reset shadow
+             // Reset shadow and alpha
              ctx.shadowColor = 'transparent';
              ctx.shadowBlur = 0;
+             ctx.globalAlpha = 1.0;
         }
     }
 
@@ -296,13 +363,18 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     for (const node of this.nodes) {
         if (node.x === undefined || node.y === undefined) continue;
         
+        const isHovered = hn === node;
+        const isHighlighted = highlightNodes.has(node);
+
+        ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.1 : 1.0;
+
         ctx.beginPath();
         // Constant node size matching hit area
         // Note: scaling the context scales everything, including the node radius.
         // If we want nodes to stay the same visual size while zooming, we'd divide radius by k.
         // But typically zooming in means seeing things larger, so simple scale is fine.
         ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
-        if (this.hoveredNode() === node) {
+        if (isHovered) {
           ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
           ctx.shadowBlur = 10;
           ctx.fillStyle = d3.color(this.getNodeColor(node.type))?.brighter(0.5).toString() || this.getNodeColor(node.type);
@@ -315,16 +387,21 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
         ctx.strokeStyle = '#fff';
         ctx.stroke();
 
-        // Reset shadow
+        // Reset shadow and alpha
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1.0;
 
         // Label
-        ctx.fillStyle = '#000';
-        ctx.font = '12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(node.label, node.x, node.y + 35);
+        if (showLabels || isHighlighted) {
+            ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.1 : 1.0;
+            ctx.fillStyle = '#000';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(node.label, node.x, node.y + 35);
+            ctx.globalAlpha = 1.0;
+        }
     }
     
     ctx.restore();
