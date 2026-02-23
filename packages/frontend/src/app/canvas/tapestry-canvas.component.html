@@ -2,6 +2,10 @@
   <div class="canvas-header">
     <h2>Tapestry Canvas</h2>
     <div class="canvas-controls">
+      <label class="filter-input">
+        Filter:
+        <input type="text" [value]="filterText()" (input)="filterText.set(searchInput.value)" placeholder="Search nodes..." #searchInput />
+      </label>
       <label class="density-slider">
         Density:
         <input type="range" min="1" max="100" [value]="graphDensity()" (input)="graphDensity.set(slider.valueAsNumber)" #slider />

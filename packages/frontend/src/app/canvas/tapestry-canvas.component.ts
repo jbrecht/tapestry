@@ -31,6 +31,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
   protected hoveredEdge = signal<SimulationLink | null>(null);
   protected showLabels = signal<boolean>(true);
   protected graphDensity = signal<number>(50); // 1 to 100
+  protected filterText = signal<string>('');
   protected mousePosition = { x: 0, y: 0 };
 
   constructor() {
@@ -45,8 +46,9 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     });
 
     effect(() => {
-      // Track the showLabels signal
+      // Track the signals that require redrawing
       this.showLabels();
+      this.filterText();
       // Redraw canvas if context acts
       if (this.ctx) {
         requestAnimationFrame(() => this.draw());
@@ -394,12 +396,39 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     
     const isHighlightMode = highlightNodes.size > 0;
 
+    // Calculate concealed nodes based on text filter
+    const filterTextRaw = this.filterText();
+    const filterText = filterTextRaw ? filterTextRaw.toLowerCase() : '';
+    const concealedNodes = new Set<SimulationNode>();
+    
+    if (filterText) {
+        for (const node of this.nodes) {
+            let matches = node.label.toLowerCase().includes(filterText) || 
+                          node.type.toLowerCase().includes(filterText);
+            
+            if (!matches && node.description) {
+                matches = node.description.toLowerCase().includes(filterText);
+            }
+            if (!matches && node.attributes) {
+                // simple search through values
+                matches = Object.values(node.attributes).some(v => 
+                   v !== null && v !== undefined && String(v).toLowerCase().includes(filterText)
+                );
+            }
+            if (!matches) {
+                concealedNodes.add(node);
+            }
+        }
+    }
+
     // Draw Links
     ctx.lineCap = 'round';
     for (const link of this.links) {
         // D3 replaces source/target string IDs with Node objects after initialization
         const source = link.source as unknown as SimulationNode;
         const target = link.target as unknown as SimulationNode;
+        
+        if (concealedNodes.has(source) || concealedNodes.has(target)) continue;
         
         const isHovered = he === link;
         const isHighlighted = highlightEdges.has(link);
@@ -435,6 +464,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     // Draw Nodes
     for (const node of this.nodes) {
         if (node.x === undefined || node.y === undefined) continue;
+        if (concealedNodes.has(node)) continue;
         
         const isHovered = hn === node;
         const isHighlighted = highlightNodes.has(node);
