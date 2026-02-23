@@ -1,7 +1,7 @@
 import { Component, signal, inject } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -21,6 +21,8 @@ import { MatInputModule } from '@angular/material/input';
 })
 export class ProjectCreateDialogComponent {
   dialogRef = inject<MatDialogRef<ProjectCreateDialogComponent>>(MatDialogRef);
+  data = inject<{title?: string}>(MAT_DIALOG_DATA, { optional: true });
 
+  title = signal(this.data?.title || 'New Project');
   projectName = signal('');
 }

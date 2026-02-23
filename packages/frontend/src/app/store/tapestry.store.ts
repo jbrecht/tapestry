@@ -46,6 +46,8 @@ export interface TapestryState {
   activePerspective: PerspectiveType;
   isLoading: boolean;
   isSaving: boolean;
+  projectsLoaded: boolean;
+  isInitialEmpty: boolean;
 }
 
 const initialState: TapestryState = {
@@ -58,6 +60,8 @@ const initialState: TapestryState = {
   activePerspective: 'abstract',
   isLoading: false,
   isSaving: false,
+  projectsLoaded: false,
+  isInitialEmpty: false,
 };
 
 export const TapestryStore = signalStore(
@@ -96,19 +100,6 @@ export const TapestryStore = signalStore(
         patchState(store, { isLoading });
       },
       
-      // Load Project List
-      loadProjectList: rxMethod<void>(
-        pipe(
-          switchMap(() => projectService.getProjects().pipe(
-            tap((projects) => patchState(store, { projectList: projects })),
-            catchError((err) => {
-              console.error('Failed to load projects', err);
-              return of([]);
-            })
-          ))
-        )
-      ),
-
       // Single Project CRUD - Save
       saveProject: rxMethod<{ id: string, name: string, data: any }>(
         pipe(
@@ -120,36 +111,6 @@ export const TapestryStore = signalStore(
                  patchState(store, { isSaving: false });
                  return of(null);
              })
-          ))
-        )
-      )
-    };
-  }),
-  // 2. Complex Methods dependent on previous methods (like loadProjectList)
-  withMethods((store) => {
-    const projectService = inject(ProjectService);
-    
-    return {
-      createProject: rxMethod<string>(
-        pipe(
-          tap(() => patchState(store, { isLoading: true })),
-          switchMap((name) => projectService.createProject(name).pipe(
-            tap((project) => {
-              patchState(store, {
-                projectId: project.id,
-                projectName: project.name,
-                nodes: [],
-                edges: [],
-                messages: [],
-                isLoading: false
-              });
-              store.loadProjectList(); 
-            }),
-            catchError((err) => {
-              console.error('Failed to create project', err);
-              patchState(store, { isLoading: false });
-              return of(null);
-            })
           ))
         )
       ),
@@ -206,6 +167,76 @@ export const TapestryStore = signalStore(
       )
     };
   }),
+
+  // 2. Methods dependent on loadProject
+  withMethods((store) => {
+    const projectService = inject(ProjectService);
+    return {
+      // Load Project List
+      loadProjectList: rxMethod<void>(
+        pipe(
+          switchMap(() => projectService.getProjects().pipe(
+            tap((projects) => {
+              let initialProject = null;
+              if (!store.projectId()) {
+                const lastProjectId = localStorage.getItem('tapestry_last_project_id');
+                if (lastProjectId && projects.find(p => p.id === lastProjectId)) {
+                  initialProject = lastProjectId;
+                } else if (projects.length > 0) {
+                  initialProject = projects[0].id;
+                }
+              }
+              
+              patchState(store, { 
+                projectList: projects,
+                projectsLoaded: true,
+                isInitialEmpty: projects.length === 0 && !store.projectId()
+              });
+
+              if (initialProject) {
+                store.loadProject(initialProject);
+              }
+            }),
+            catchError((err) => {
+              console.error('Failed to load projects', err);
+              return of([]);
+            })
+          ))
+        )
+      )
+    };
+  }),
+
+  // 3. Methods dependent on loadProjectList
+  withMethods((store) => {
+    const projectService = inject(ProjectService);
+    return {
+      createProject: rxMethod<string>(
+        pipe(
+          tap(() => patchState(store, { isLoading: true })),
+          switchMap((name) => projectService.createProject(name).pipe(
+            tap((project) => {
+              patchState(store, {
+                projectId: project.id,
+                projectName: project.name,
+                nodes: [],
+                edges: [],
+                messages: [],
+                isLoading: false,
+                isInitialEmpty: false
+              });
+              store.loadProjectList(); 
+            }),
+            catchError((err) => {
+              console.error('Failed to create project', err);
+              patchState(store, { isLoading: false });
+              return of(null);
+            })
+          ))
+        )
+      )
+    };
+  }),
   // 3. Aliases for Component Usage
   withMethods((store) => ({
       startNewProject(name: string) {
@@ -233,12 +264,22 @@ export const TapestryStore = signalStore(
                 projectList: [],
                 nodes: [],
                 edges: [],
-                messages: []
+                messages: [],
+                projectsLoaded: false,
+                isInitialEmpty: false
             });
         }
       });
 
-      // B. Auto-save Effect
+      // B. Persist current project to local storage
+      effect(() => {
+        const currentProjectId = store.projectId();
+        if (currentProjectId) {
+          localStorage.setItem('tapestry_last_project_id', currentProjectId);
+        }
+      });
+
+      // C. Auto-save Effect
       // Create a signal that represents the complete saveable state
       const saveState = computed(() => ({
         id: store.projectId(),
