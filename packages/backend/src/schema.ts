@@ -16,7 +16,8 @@ export interface TapestryNode {
     locationType?: string;
     
     // Reserved for "Timeline" Perspective
-    timestamp?: string; // ISO or relative string
+    startTime?: string; // ISO or relative string
+    endTime?: string; // ISO or relative string
     
     // Catch-all for everything else
     [key: string]: any;
@@ -47,10 +48,11 @@ export const NodeExtractionSchema = z.object({
       x: z.number(),
       y: z.number()
     }).nullable().describe("Coordinates if the entity is a location"),
-    timestamp: z.string().nullable().describe("Date or time if the entity is an event"),
+    startTime: z.string().nullable().describe("Date or time an event starts (or its only date)"),
+    endTime: z.string().nullable().describe("Date or time an event ends (only if it is a range)"),
     locationType: z.string().nullable().describe("e.g., 'city', 'mountain'"),
     extraInfo: z.string().nullable().describe("Any other notable details")
-  })
+  }).strict()
 }).strict();
 
 export const EdgeExtractionSchema = z.object({

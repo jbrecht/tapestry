@@ -27,7 +27,7 @@ export class TapestryTimelineComponent implements AfterViewInit, OnDestroy {
   protected mousePosition = { x: 0, y: 0 };
   
   // Cache the layout calculations to avoid re-grouping every frame
-  private layoutCache: { node: TapestryNode, parsedDate: Date, stackIndex: number }[] = [];
+  private layoutCache: { node: TapestryNode, parsedStartDate: Date, parsedEndDate: Date | null, stackIndex: number }[] = [];
   
   constructor() {
     effect(() => {
@@ -103,8 +103,13 @@ export class TapestryTimelineComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private parseDate(timestampStr: string | undefined): Date | null {
-      if (!timestampStr) return null;
+  private parseDate(timestampInput: any): Date | null {
+      if (!timestampInput) return null;
+      
+      const timestampStr = typeof timestampInput === 'number' ? timestampInput.toString() : timestampInput;
+      
+      if (typeof timestampStr !== 'string') return null;
+
       // Try standard parsing first
       const standardDate = new Date(timestampStr);
       if (!isNaN(standardDate.getTime())) {
@@ -125,15 +130,27 @@ export class TapestryTimelineComponent implements AfterViewInit, OnDestroy {
   }
 
   private updateScales(nodes: TapestryNode[]) {
-      // Filter strictly to nodes that yield a valid parsed date
-      const validNodes = nodes.filter(n => this.parseDate(n.attributes.timestamp) !== null);
+      // Filter strictly to nodes that yield a valid parsed start date
+      const validNodes = nodes.filter(n => {
+          const parsed = this.parseDate(n.attributes['startTime']);
+          return parsed !== null;
+      });
+      console.log('Valid nodes for timeline:', validNodes);
 
       if (!this.initialTimeScale && validNodes.length === 0) {
           this.initialTimeScale = d3.scaleTime()
              .domain([new Date(2020, 0, 1), new Date(2030, 0, 1)])
              .range([50, this.width - 50]);
       } else if (validNodes.length > 0) {
-          const dates = validNodes.map(n => this.parseDate(n.attributes.timestamp)!);
+          const dates: Date[] = [];
+          for (const n of validNodes) {
+              const start = this.parseDate(n.attributes['startTime']);
+              if (start) dates.push(start);
+              
+              const end = this.parseDate(n.attributes['endTime']);
+              if (end) dates.push(end);
+          }
+          
           const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
           const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
           
@@ -153,6 +170,8 @@ export class TapestryTimelineComponent implements AfterViewInit, OnDestroy {
           this.timeScale = this.transform.rescaleX(this.initialTimeScale);
       }
       
+      console.log('Updated initial time scale domain:', this.initialTimeScale?.domain());
+      
       this.updateLayoutCache(nodes);
   }
 
@@ -163,9 +182,9 @@ export class TapestryTimelineComponent implements AfterViewInit, OnDestroy {
       const dateGroups = new Map<number, TapestryNode[]>();
       
       for (const node of nodes) {
-          const date = this.parseDate(node.attributes.timestamp);
-          if (date) {
-              const time = date.getTime();
+          const startDate = this.parseDate(node.attributes['startTime']);
+          if (startDate) {
+              const time = startDate.getTime();
               if (!dateGroups.has(time)) {
                   dateGroups.set(time, []);
               }
@@ -177,9 +196,10 @@ export class TapestryTimelineComponent implements AfterViewInit, OnDestroy {
       }
       
       for (const [time, groupNodes] of dateGroups.entries()) {
-          const parsedDate = new Date(time);
+          const parsedStartDate = new Date(time);
           groupNodes.forEach((node, index) => {
-              this.layoutCache.push({ node, parsedDate, stackIndex: index });
+              const parsedEndDate = this.parseDate(node.attributes['endTime']);
+              this.layoutCache.push({ node, parsedStartDate, parsedEndDate, stackIndex: index });
           });
       }
   }
@@ -198,13 +218,28 @@ export class TapestryTimelineComponent implements AfterViewInit, OnDestroy {
     let foundNode: TapestryNode | null = null;
     
     for (const layout of this.layoutCache) {
-        const nx = this.timeScale(layout.parsedDate);
-        // Stack vertically: 50px spacing between nodes, going upwards from axis
+        const nx = this.timeScale(layout.parsedStartDate);
         const ny = axisY - (layout.stackIndex * 50);
         
-        const dx = localX - nx;
-        const dy = localY - ny;
-        if ((dx * dx + dy * dy) < (20 * 20)) { // 20px radius hit test
+        // If it's a range, check if we hit the duration line
+        let isHit = false;
+        
+        if (layout.parsedEndDate) {
+            const endX = this.timeScale(layout.parsedEndDate);
+            // Check bounding box of the rounded rect (approx)
+            if (localX >= nx - 10 && localX <= endX + 10 && localY >= ny - 10 && localY <= ny + 10) {
+                isHit = true;
+            }
+        } else {
+            // Check point radius hit test
+            const dx = localX - nx;
+            const dy = localY - ny;
+            if ((dx * dx + dy * dy) < (20 * 20)) { // 20px radius
+                isHit = true;
+            }
+        }
+        
+        if (isHit) {
             foundNode = layout.node;
             break; // take first match for now
         }
@@ -263,7 +298,7 @@ export class TapestryTimelineComponent implements AfterViewInit, OnDestroy {
     // Draw vertical connection lines for stacked nodes first
     for (const layout of this.layoutCache) {
         if (layout.stackIndex > 0) {
-            const nx = this.timeScale(layout.parsedDate);
+            const nx = this.timeScale(layout.parsedStartDate);
             const ny = axisY - (layout.stackIndex * 50);
             ctx.beginPath();
             ctx.moveTo(nx, axisY);
@@ -276,28 +311,55 @@ export class TapestryTimelineComponent implements AfterViewInit, OnDestroy {
 
     for (const layout of this.layoutCache) {
         const node = layout.node;
-        const nx = this.timeScale(layout.parsedDate);
+        const nx = this.timeScale(layout.parsedStartDate);
         const ny = axisY - (layout.stackIndex * 50);
         
         const isHovered = hn === node;
         
-        ctx.beginPath();
-        ctx.arc(nx, ny, 10, 0, 2 * Math.PI);
-        if (isHovered) {
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-            ctx.shadowBlur = 10;
-            ctx.fillStyle = d3.color(this.getNodeColor(node.type))?.brighter(0.5).toString() || this.getNodeColor(node.type);
-            ctx.lineWidth = 3;
+        const color = this.getNodeColor(node.type);
+        const fillStyle = isHovered ? d3.color(color)?.brighter(0.5).toString() || color : color;
+        
+        if (layout.parsedEndDate) {
+            // Draw a duration rounded rect
+            const endX = this.timeScale(layout.parsedEndDate);
+            const width = Math.max(endX - nx, 20); // enforce min width for visibility
+            
+            ctx.beginPath();
+            ctx.roundRect(nx - 10, ny - 10, width + 20, 20, 10);
+            
+            if (isHovered) {
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 10;
+                ctx.lineWidth = 3;
+            } else {
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.lineWidth = 2;
+            }
+            ctx.fillStyle = fillStyle;
             ctx.strokeStyle = '#fff';
+            ctx.fill();
+            ctx.stroke();
+            
         } else {
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = this.getNodeColor(node.type);
-            ctx.lineWidth = 2;
+            // Draw regular point
+            ctx.beginPath();
+            ctx.arc(nx, ny, 10, 0, 2 * Math.PI);
+            if (isHovered) {
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 10;
+                ctx.lineWidth = 3;
+            } else {
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.lineWidth = 2;
+            }
+            
+            ctx.fillStyle = fillStyle;
             ctx.strokeStyle = '#fff';
+            ctx.fill();
+            ctx.stroke();
         }
-        ctx.fill();
-        ctx.stroke();
         
         if (isHovered) {
             ctx.shadowColor = 'transparent';
@@ -312,16 +374,29 @@ export class TapestryTimelineComponent implements AfterViewInit, OnDestroy {
             ctx.font = '12px sans-serif';
             ctx.fillStyle = '#666';
             
-            const dateStr = node.attributes.timestamp || '';
-            let parsedStr = dateStr;
-            try {
-                parsedStr = new Date(dateStr).toLocaleDateString(undefined, {
-                    year: 'numeric', month: 'short', day: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
-                });
-            } catch(e) {}
+            const startStr = node.attributes['startTime'] || '';
+            const endStr = node.attributes['endTime'] || '';
             
-            ctx.fillText(parsedStr, nx, ny - 32);
+            let labelText = '';
+            
+            try {
+                const parseString = (str: string) => {
+                    const match = str.match(/^\\d{3,4}$/); // just single year bounds
+                    if (match) return str;
+                    return new Date(str).toLocaleDateString(undefined, {
+                        year: 'numeric', month: 'short', day: 'numeric'
+                    });
+                };
+                
+                labelText = parseString(startStr);
+                if (endStr) {
+                    labelText += ' - ' + parseString(endStr);
+                }
+            } catch(e) {
+                labelText = endStr ? `${startStr} - ${endStr}` : startStr;
+            }
+            
+            ctx.fillText(labelText, nx, ny - 32);
         } else {
             // Unhovered labels
             ctx.shadowColor = 'transparent';

@@ -8,6 +8,7 @@ import { extractionNode } from "./extractor.js";
 import authRoutes from "./routes/auth.js";
 import projectRoutes from "./routes/projects.js";
 import userRoutes from "./routes/users.js";
+import { TapestryExtractionSchema } from "./schema.js";
 
 dotenv.config();
 

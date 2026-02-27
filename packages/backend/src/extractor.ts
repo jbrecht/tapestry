@@ -6,16 +6,14 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function extractionNode(state: typeof TapestryState.State) {
   const model = new ChatOpenAI({ modelName: "gpt-4o", temperature: 0 });
-  const structuredModel = model.withStructuredOutput(TapestryExtractionSchema);
+  const structuredModel = model.withStructuredOutput(TapestryExtractionSchema, { name: "extract_tapestry_v2", strict: true });
   
   const systemPrompt = `You are the Loom. Weave the input into the current Knowledge Graph.
     Current Nodes: ${JSON.stringify(state.nodes)}
     
     Rules:
     1. Entity Resolution: If an entity exists (check 'label'), do NOT create a new node.
-    2. Attributes: Add new info to 'attributes' (like 'timestamp' for Events).
-    3. Links: Create edges between nodes using labels.
-    4. Follow-up: Ask the user a question to gather more information about the graph. Focus on missing connections or details. Do not ask if they want to know more.
+    2. Attributes: Add new info to 'attributes' (must use 'startTime' and 'endTime' for Events). NEVER extract an absolute date or time as a standalone node. Dates and times must ALWAYS be attributes. DO NOT USE a 'timestamp' attribute.
     3. Links: Create edges between nodes using labels.
     4. Follow-up: Ask the user a question to gather more information about the graph. Focus on missing connections or details. Do not ask if they want to know more.
     5. Deletions: If the user says a relationship doesn't exist or is not true (e.g., 'X is not Y'), put it in 'edgesToRemove'. Do NOT create an edge with a 'NOT_' predicate.`;

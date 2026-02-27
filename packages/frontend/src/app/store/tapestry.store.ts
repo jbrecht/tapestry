@@ -16,7 +16,8 @@ export interface TapestryNode {
   description: string | null;
   attributes: {
     coordinates?: { x: number; y: number };
-    timestamp?: string;
+    startTime?: string;
+    endTime?: string;
     locationType?: string;
     extraInfo?: string | null;
     [key: string]: any;
@@ -72,8 +73,12 @@ export const TapestryStore = signalStore(
     mapNodes: computed(() => nodes().filter(n => !!n.attributes.coordinates)),
     timelineNodes: computed(() => 
       nodes()
-        .filter(n => !!n.attributes.timestamp)
-        .sort((a, b) => (a.attributes.timestamp || '').localeCompare(b.attributes.timestamp || ''))
+        .filter(n => !!n.attributes['startTime'])
+        .sort((a, b) => {
+           const timeA = String(a.attributes['startTime'] || '');
+           const timeB = String(b.attributes['startTime'] || '');
+           return timeA.localeCompare(timeB);
+        })
     ),
     // World Stats (Fun for the UI)
     nodeCount: computed(() => nodes().length),
