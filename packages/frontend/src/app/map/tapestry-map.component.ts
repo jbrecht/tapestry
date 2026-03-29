@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, viewChild, ElementRef, effect, OnDestroy, AfterViewInit } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, viewChild, ElementRef, effect, untracked, OnDestroy, AfterViewInit } from '@angular/core';
 import { TapestryNode, TapestryStore } from '../store/tapestry.store';
 import * as L from 'leaflet';
 
@@ -41,8 +41,8 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
   private mapRef = viewChild<ElementRef<HTMLDivElement>>('mapContainer');
 
   private map: L.Map | null = null;
-  // nodeId -> marker
   private markers = new Map<string, L.Marker>();
+  private initialBoundsSet = false;
 
   constructor() {
     effect(() => {
@@ -77,7 +77,8 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
 
   private syncMarkers(nodes: TapestryNode[]) {
     if (!this.map) return;
-    const selectedId = this.store.selectedNodeId();
+    // untracked: selectedNodeId must not become a dependency of the nodes effect
+    const selectedId = untracked(() => this.store.selectedNodeId());
     const incomingIds = new Set(nodes.map(n => n.id));
 
     // Remove stale markers
@@ -113,21 +114,25 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // Fit bounds if we have markers and no prior view set
-    if (nodes.length > 0 && this.markers.size > 0) {
+    // Fit bounds only on initial load — never on subsequent syncs
+    if (!this.initialBoundsSet && this.markers.size > 0) {
       const validLatLngs = nodes
         .map(n => n.attributes['coordinates'] as { x: number; y: number } | null)
-        .filter(c => c != null)
-        .map(c => [c!.y, c!.x] as L.LatLngTuple);
+        .filter((c): c is { x: number; y: number } => c != null)
+        .map(c => [c.y, c.x] as L.LatLngTuple);
       if (validLatLngs.length > 0) {
         this.map.fitBounds(validLatLngs, { padding: [40, 40], maxZoom: 10 });
+        this.initialBoundsSet = true;
       }
     }
   }
 
   private updateSelectedMarker(selectedId: string | null) {
+    // untracked: nodes must not become a dependency of the selectedNodeId effect
+    const allNodes = untracked(() => this.store.nodes());
+
     for (const [id, marker] of this.markers) {
-      const node = this.store.nodes().find(n => n.id === id);
+      const node = allNodes.find(n => n.id === id);
       if (!node) continue;
       const color = COLORS[node.type] ?? COLORS['Thing'];
       marker.setIcon(makeIcon(color, id === selectedId));
@@ -135,7 +140,7 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
 
     // Pan to selected node
     if (selectedId) {
-      const node = this.store.nodes().find(n => n.id === selectedId);
+      const node = allNodes.find(n => n.id === selectedId);
       if (node?.attributes['coordinates']) {
         const { x: lng, y: lat } = node.attributes['coordinates'] as { x: number; y: number };
         this.map?.panTo([lat, lng], { animate: true });
