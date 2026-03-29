@@ -400,6 +400,7 @@
 
 .connection-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
   border-radius: 6px;
@@ -410,6 +411,11 @@
 
     .edge-delete-btn { opacity: 1; }
   }
+}
+
+.conn-predicate-wrap {
+  width: 100%;
+  padding: 0 4px 4px 28px; // indent to align under the node label
 }
 
 .conn-navigate {

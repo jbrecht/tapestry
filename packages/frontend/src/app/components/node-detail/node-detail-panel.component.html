@@ -148,22 +148,23 @@
               </span>
               <div class="conn-body">
                 <span class="conn-label">{{ conn.nodeLabel }}</span>
-                @if (editingEdgeId() === conn.edgeId) {
-                  <input
-                    class="conn-predicate-edit"
-                    [value]="conn.predicate"
-                    (click)="$event.stopPropagation()"
-                    (keydown.enter)="saveEdgePredicate(conn.edgeId, $any($event.target).value)"
-                    (keydown.escape)="editingEdgeId.set(null)"
-                    (blur)="saveEdgePredicate(conn.edgeId, $any($event.target).value)"
-                    autofocus
-                  />
-                } @else {
-                  <span class="conn-predicate" (click)="$event.stopPropagation(); startEditEdge(conn.edgeId)" title="Click to edit">{{ conn.predicate }}</span>
-                }
               </div>
               <span class="conn-type type-{{ conn.nodeType.toLowerCase() }}">{{ conn.nodeType }}</span>
             </button>
+            <div class="conn-predicate-wrap">
+              @if (editingEdgeId() === conn.edgeId) {
+                <input
+                  class="conn-predicate-edit"
+                  [value]="conn.predicate"
+                  (keydown.enter)="saveEdgePredicate(conn.edgeId, $any($event.target).value)"
+                  (keydown.escape)="editingEdgeId.set(null)"
+                  (blur)="saveEdgePredicate(conn.edgeId, $any($event.target).value)"
+                  autofocus
+                />
+              } @else {
+                <span class="conn-predicate" (click)="startEditEdge(conn.edgeId)" title="Click to edit">{{ conn.predicate }}</span>
+              }
+            </div>
             <button class="edge-delete-btn" (click)="confirmingDeleteEdgeId.set(conn.edgeId)" aria-label="Delete edge">✕</button>
           </div>
         }
