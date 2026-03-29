@@ -49,6 +49,13 @@ const initSchema = () => {
     );
     
     CREATE INDEX IF NOT EXISTS idx_messages_project_id ON messages(project_id);
+
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      expires_at DATETIME NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
   `);
 
   // Simple migration for existing DB

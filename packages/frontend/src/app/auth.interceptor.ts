@@ -1,7 +1,7 @@
-import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { HttpInterceptorFn, HttpErrorResponse, HttpRequest, HttpHandlerFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { AuthService } from './services/auth.service';
-import { catchError } from 'rxjs/operators';
+import { catchError, switchMap } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
@@ -9,12 +9,22 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      // Check for Unauthorized or Forbidden statuses
-      if (error.status === 401 || error.status === 403) {
-        // Clear tokens and redirect to login
-        authService.logout();
+      // Don't attempt refresh for auth endpoints (avoids infinite loops)
+      const isAuthEndpoint = req.url.includes('/auth/');
+      const isTokenError = error.status === 401 || error.status === 403;
+
+      if (isTokenError && !isAuthEndpoint) {
+        return authService.refresh().pipe(
+          switchMap(newToken => next(requestWithToken(req, newToken))),
+          catchError(() => throwError(() => error))
+        );
       }
+
       return throwError(() => error);
     })
   );
 };
+
+function requestWithToken(req: HttpRequest<unknown>, token: string): HttpRequest<unknown> {
+  return req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+}
