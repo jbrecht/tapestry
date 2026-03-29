@@ -204,6 +204,16 @@ export const TapestryStore = signalStore(
           selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
         }));
       },
+      deleteNodes(nodeIds: string[]) {
+        const ids = new Set(nodeIds);
+        patchState(store, state => ({
+          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          redoStack: [],
+          nodes: state.nodes.filter(n => !ids.has(n.id)),
+          edges: state.edges.filter(e => !ids.has(e.sourceId) && !ids.has(e.targetId)),
+          selectedNodeId: ids.has(state.selectedNodeId ?? '') ? null : state.selectedNodeId,
+        }));
+      },
       addEdge(edge: Omit<TapestryEdge, 'id'>) {
         patchState(store, state => ({
           undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),

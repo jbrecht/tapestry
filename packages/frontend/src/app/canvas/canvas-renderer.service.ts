@@ -14,12 +14,13 @@ export interface DrawOptions {
   showLabels: boolean;
   filterText: string;
   selectedNodeId: string | null;
+  multiSelectedIds: Set<string>;
 }
 
 @Injectable()
 export class CanvasRendererService {
   draw(opts: DrawOptions): void {
-    const { ctx, width, height, transform, nodes, links, hoveredNode: hn, hoveredEdgeGroup: he, showLabels, filterText, selectedNodeId } = opts;
+    const { ctx, width, height, transform, nodes, links, hoveredNode: hn, hoveredEdgeGroup: he, showLabels, filterText, selectedNodeId, multiSelectedIds } = opts;
 
     ctx.clearRect(0, 0, width, height);
     ctx.save();
@@ -32,7 +33,7 @@ export class CanvasRendererService {
     const linkGroups = this.groupLinks(links);
 
     this.drawLinks(ctx, linkGroups, concealedNodes, highlightEdgeIds, isHighlightMode, he);
-    this.drawNodes(ctx, nodes, concealedNodes, highlightNodes, isHighlightMode, hn, showLabels, selectedNodeId);
+    this.drawNodes(ctx, nodes, concealedNodes, highlightNodes, isHighlightMode, hn, showLabels, selectedNodeId, multiSelectedIds);
 
     ctx.restore();
   }
@@ -161,7 +162,8 @@ export class CanvasRendererService {
     isHighlightMode: boolean,
     hoveredNode: SimulationNode | null,
     showLabels: boolean,
-    selectedNodeId: string | null
+    selectedNodeId: string | null,
+    multiSelectedIds: Set<string>
   ): void {
     for (const node of nodes) {
       if (node.x === undefined || node.y === undefined) continue;
@@ -169,10 +171,26 @@ export class CanvasRendererService {
 
       const isHovered = hoveredNode === node;
       const isSelected = node.id === selectedNodeId;
+      const isMultiSelected = multiSelectedIds.has(node.id);
       const isHighlighted = highlightNodes.has(node);
       ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.1 : 1.0;
 
-      // Selection ring (drawn before fill so it sits behind the node circle)
+      // Multi-select ring — dashed blue
+      if (isMultiSelected) {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 27, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#4a90d9';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([5, 3]);
+        ctx.shadowColor = 'rgba(74,144,217,0.4)';
+        ctx.shadowBlur = 6;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+      }
+
+      // Single-selection ring — solid amber
       if (isSelected) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, 26, 0, 2 * Math.PI);

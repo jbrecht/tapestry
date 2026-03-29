@@ -162,6 +162,59 @@ canvas {
     }
   }
 
+  // ── Multi-select bar ────────────────────────────────────────────────────────
+
+.multiselect-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 24px;
+  padding: 6px 10px 6px 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  z-index: 20;
+  white-space: nowrap;
+}
+
+.multiselect-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.multiselect-delete {
+  padding: 4px 14px;
+  background: #e53935;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #c62828; }
+}
+
+.multiselect-clear {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+
+  &:hover { color: #555; background: #f0f0f0; }
+}
+
   .predicates {
     display: flex;
     flex-direction: column;

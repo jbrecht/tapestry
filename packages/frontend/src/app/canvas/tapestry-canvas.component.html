@@ -14,6 +14,16 @@
   </div>
   <canvas #graphCanvas width="800" height="600"></canvas>
 
+  @if (multiSelectedIds().size > 0) {
+    <div class="multiselect-bar">
+      <span class="multiselect-count">{{ multiSelectedIds().size }} node{{ multiSelectedIds().size !== 1 ? 's' : '' }} selected</span>
+      <button class="multiselect-delete" (click)="deleteSelected()">
+        Delete selected
+      </button>
+      <button class="multiselect-clear" (click)="multiSelectedIds.set(emptySet)">✕</button>
+    </div>
+  }
+
   @if (hoveredNode(); as node) {
     <div class="node-tooltip" [style.left.px]="mousePosition.x + 15" [style.top.px]="mousePosition.y + 15">
       <div class="tooltip-header">

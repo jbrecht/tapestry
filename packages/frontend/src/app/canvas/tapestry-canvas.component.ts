@@ -33,6 +33,8 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
   protected showLabels = signal<boolean>(true);
   protected graphDensity = signal<number>(50);
   protected mousePosition = { x: 0, y: 0 };
+  protected multiSelectedIds = signal<Set<string>>(new Set());
+  protected readonly emptySet = new Set<string>();
 
   protected edgeGroupSource(group: SimulationLink[]): SimulationNode {
     return group[0].source as unknown as SimulationNode;
@@ -56,6 +58,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
       this.showLabels();
       this.store.filterText();
       this.store.selectedNodeId();
+      this.multiSelectedIds();
       if (this.ctx) requestAnimationFrame(() => this.draw());
     });
 
@@ -76,6 +79,10 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  private onDocKeyDown = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') this.multiSelectedIds.set(new Set());
+  };
+
   ngAfterViewInit() {
     const canvas = this.canvasRef()?.nativeElement;
     if (!canvas) return;
@@ -88,6 +95,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     canvas.addEventListener('mousemove', this.onMouseMove);
     canvas.addEventListener('mouseout', this.onMouseOut);
     canvas.addEventListener('click', this.onClick);
+    document.addEventListener('keydown', this.onDocKeyDown);
 
     this.handlePerspective(this.store.nodes(), this.store.edges(), this.store.activePerspective());
   }
@@ -101,6 +109,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
       canvas.removeEventListener('mouseout', this.onMouseOut);
       canvas.removeEventListener('click', this.onClick);
     }
+    document.removeEventListener('keydown', this.onDocKeyDown);
   }
 
   private handlePerspective(nodes: TapestryNode[], edges: TapestryEdge[], perspective: PerspectiveType): void {
@@ -128,7 +137,8 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
       hoveredEdgeGroup: this.hoveredEdgeGroup(),
       showLabels: this.showLabels(),
       filterText: this.store.filterText(),
-      selectedNodeId: this.store.selectedNodeId()
+      selectedNodeId: this.store.selectedNodeId(),
+      multiSelectedIds: this.multiSelectedIds(),
     });
   }
 
@@ -225,10 +235,31 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     const worldY = (localY - this.transform.y) / this.transform.k;
 
     const node = this.simulation.findNodeAt(worldX, worldY) ?? null;
-    const currentId = this.store.selectedNodeId();
-    // Toggle off if clicking the already-selected node
-    this.store.selectNode(node && node.id !== currentId ? node.id : null);
+
+    if (event.metaKey || event.ctrlKey) {
+      // Cmd/Ctrl+click: toggle multi-selection
+      if (!node) return;
+      this.multiSelectedIds.update(prev => {
+        const next = new Set(prev);
+        next.has(node.id) ? next.delete(node.id) : next.add(node.id);
+        return next;
+      });
+      // Clear single-selection when starting multi-select
+      this.store.selectNode(null);
+    } else {
+      // Plain click: clear multi-selection and single-select
+      this.multiSelectedIds.set(new Set());
+      const currentId = this.store.selectedNodeId();
+      this.store.selectNode(node && node.id !== currentId ? node.id : null);
+    }
   };
+
+  protected deleteSelected(): void {
+    const ids = [...this.multiSelectedIds()];
+    if (ids.length === 0) return;
+    this.store.deleteNodes(ids);
+    this.multiSelectedIds.set(new Set());
+  }
 
   private onMouseOut = (): void => {
     this.hoveredNode.set(null);

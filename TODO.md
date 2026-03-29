@@ -16,7 +16,7 @@ A living list of planned work, roughly ordered by priority.
 
 - [x] **Import JSON** — upload button in top bar merges nodes/edges from a `.json` file (deduplicates by ID)
 - [x] **Edge editing** — click predicate label in connections list to edit inline; Enter/blur saves, Escape cancels
-- [ ] **Bulk select & delete** — shift-click or lasso-select multiple nodes in the canvas, then delete or group them
+- [x] **Bulk select & delete** — Cmd/Ctrl+click to multi-select nodes (dashed blue ring); floating bar shows count and Delete button; Esc clears selection
 - [x] **Keyboard shortcut reference** — `?` key and `?` button in top bar open help modal with full shortcut table
 - [x] **Help modal** — sections for Getting Started, Nodes, Connections, Map, and Keyboard Shortcuts
 
