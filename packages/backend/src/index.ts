@@ -1,23 +1,18 @@
 import express from "express";
 import cors from "cors";
-import * as dotenv from "dotenv";
 import { StateGraph, START, END } from "@langchain/langgraph";
-import { HumanMessage, BaseMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
+import { HumanMessage, BaseMessage, AIMessage } from "@langchain/core/messages";
+import { FRONTEND_URL, PORT } from "./config.js";
 import { TapestryState } from "./state.js";
 import { extractionNode } from "./extractor.js";
 import authRoutes from "./routes/auth.js";
 import projectRoutes from "./routes/projects.js";
 import userRoutes from "./routes/users.js";
-import { TapestryExtractionSchema } from "./schema.js";
-
-dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
 
 // 1. Middleware
-const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:4200';
-app.use(cors({ origin: allowedOrigin }));
+app.use(cors({ origin: FRONTEND_URL }));
 app.use(express.json());
 
 // Routes
@@ -42,22 +37,18 @@ app.post("/weave", async (req, res) => {
   try {
     const { message, history, nodes, edges } = req.body;
 
-    // Convert raw history back into LangChain Message objects
-    const messageHistory: BaseMessage[] = (history || []).map((msg: any) => 
+    const messageHistory: BaseMessage[] = (history || []).map((msg: any) =>
       msg.role === 'user' ? new HumanMessage(msg.content) : new AIMessage(msg.content)
     );
 
-    // Initial state for this execution turn
     const initialState = {
       messages: [new HumanMessage(message)],
       nodes: nodes || [],
       edges: edges || [],
     };
 
-    // Execute the LangGraph
     const result = await tapestryApp.invoke(initialState);
 
-    // Return the updated graph and the AI's response
     res.json({
       nodes: result.nodes,
       edges: result.edges,
@@ -70,6 +61,6 @@ app.post("/weave", async (req, res) => {
 });
 
 // 4. Start Server
-app.listen(port, () => {
-  console.log(`🧶 Tapestry server spinning on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`🧶 Tapestry server spinning on port ${PORT}`);
 });
