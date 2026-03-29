@@ -72,6 +72,56 @@ export function applyExtractionResult(
   return { nodes: updatedNodes, edges: updatedEdges };
 }
 
+// ─── Geocoding ───────────────────────────────────────────────────────────────
+
+async function nominatimGeocode(name: string): Promise<{ x: number; y: number } | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Tapestry/1.0 (knowledge graph application)' }
+    });
+    if (!response.ok) return null;
+    const data = await response.json() as Array<{ lat: string; lon: string }>;
+    if (!data.length) return null;
+    return { x: parseFloat(data[0].lon), y: parseFloat(data[0].lat) };
+  } catch {
+    return null;
+  }
+}
+
+async function geocodeMissingPlaces(nodes: TapestryNode[], previousNodeIds: Set<string>): Promise<TapestryNode[]> {
+  // Only geocode Place nodes that are either new or still missing coordinates
+  const toGeocode = nodes.filter(
+    n => n.type === 'Place' && !n.attributes['coordinates']
+  );
+  if (toGeocode.length === 0) return nodes;
+
+  console.log(`[geocode] Looking up coordinates for ${toGeocode.length} place(s)...`);
+  const updatedNodes = [...nodes];
+
+  for (const place of toGeocode) {
+    const coords = await nominatimGeocode(place.label);
+    if (coords) {
+      const idx = updatedNodes.findIndex(n => n.id === place.id);
+      if (idx !== -1) {
+        updatedNodes[idx] = {
+          ...updatedNodes[idx],
+          attributes: { ...updatedNodes[idx].attributes, coordinates: coords }
+        };
+        console.log(`[geocode] ✓ ${place.label} → (${coords.y.toFixed(4)}, ${coords.x.toFixed(4)})`);
+      }
+    } else {
+      console.log(`[geocode] ✗ ${place.label} — not found`);
+    }
+    // Nominatim ToS: max 1 request per second
+    await new Promise(r => setTimeout(r, 1100));
+  }
+
+  return updatedNodes;
+}
+
+// ─── Extraction node ─────────────────────────────────────────────────────────
+
 export async function extractionNode(state: typeof TapestryState.State) {
   const model = new ChatOpenAI({ modelName: "gpt-4o", temperature: 0 });
   const structuredModel = model.withStructuredOutput(TapestryExtractionSchema, { name: "extract_tapestry_v2", strict: true });
@@ -91,7 +141,9 @@ export async function extractionNode(state: typeof TapestryState.State) {
     ...state.messages,
   ]);
 
-  const { nodes, edges } = applyExtractionResult(state.nodes, state.edges, result);
+  const previousNodeIds = new Set(state.nodes.map(n => n.id));
+  const { nodes: extractedNodes, edges } = applyExtractionResult(state.nodes, state.edges, result);
+  const nodes = await geocodeMissingPlaces(extractedNodes, previousNodeIds);
 
   return {
     nodes,
