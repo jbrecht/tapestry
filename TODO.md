@@ -45,7 +45,7 @@ The chat box is not the right place for source material. Ingestion is a separate
 - [x] **`POST /extract` endpoint** — dedicated route reusing the extractor; no chat history in prompt; returns graph delta + summary string
 - [ ] **Document upload** — accept `.txt`, `.md`, `.pdf` files in the extract panel; PDF text extraction on the backend
 - [ ] **URL ingestion** — paste a URL (Wikipedia, article, etc.) and have the backend fetch + extract from it
-- [ ] **Chunking for large documents** — split long texts into overlapping chunks, run extraction per chunk, merge results with deduplication by label/type before applying to the graph
+- [ ] **Chunking for large documents** — large text is currently sent as a single prompt, which causes the model to under-extract; split into overlapping chunks, run extraction per chunk, merge with deduplication before applying to graph (revisit after other priorities)
 
 ---
 
