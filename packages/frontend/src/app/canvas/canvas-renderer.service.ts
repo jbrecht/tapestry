@@ -13,12 +13,13 @@ export interface DrawOptions {
   hoveredEdgeGroup: SimulationLink[] | null;
   showLabels: boolean;
   filterText: string;
+  selectedNodeId: string | null;
 }
 
 @Injectable()
 export class CanvasRendererService {
   draw(opts: DrawOptions): void {
-    const { ctx, width, height, transform, nodes, links, hoveredNode: hn, hoveredEdgeGroup: he, showLabels, filterText } = opts;
+    const { ctx, width, height, transform, nodes, links, hoveredNode: hn, hoveredEdgeGroup: he, showLabels, filterText, selectedNodeId } = opts;
 
     ctx.clearRect(0, 0, width, height);
     ctx.save();
@@ -31,7 +32,7 @@ export class CanvasRendererService {
     const linkGroups = this.groupLinks(links);
 
     this.drawLinks(ctx, linkGroups, concealedNodes, highlightEdgeIds, isHighlightMode, he);
-    this.drawNodes(ctx, nodes, concealedNodes, highlightNodes, isHighlightMode, hn, showLabels);
+    this.drawNodes(ctx, nodes, concealedNodes, highlightNodes, isHighlightMode, hn, showLabels, selectedNodeId);
 
     ctx.restore();
   }
@@ -159,15 +160,30 @@ export class CanvasRendererService {
     highlightNodes: Set<SimulationNode>,
     isHighlightMode: boolean,
     hoveredNode: SimulationNode | null,
-    showLabels: boolean
+    showLabels: boolean,
+    selectedNodeId: string | null
   ): void {
     for (const node of nodes) {
       if (node.x === undefined || node.y === undefined) continue;
       if (concealedNodes.has(node)) continue;
 
       const isHovered = hoveredNode === node;
+      const isSelected = node.id === selectedNodeId;
       const isHighlighted = highlightNodes.has(node);
       ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.1 : 1.0;
+
+      // Selection ring (drawn before fill so it sits behind the node circle)
+      if (isSelected) {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 26, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#f5a623';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(245,166,35,0.5)';
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+      }
 
       ctx.beginPath();
       ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
@@ -188,10 +204,10 @@ export class CanvasRendererService {
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1.0;
 
-      if (showLabels || isHighlighted) {
+      if (showLabels || isHighlighted || isSelected) {
         ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.1 : 1.0;
-        ctx.fillStyle = '#000';
-        ctx.font = '12px sans-serif';
+        ctx.fillStyle = isSelected ? '#b37700' : '#000';
+        ctx.font = isSelected ? 'bold 12px sans-serif' : '12px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(node.label, node.x, node.y + 35);

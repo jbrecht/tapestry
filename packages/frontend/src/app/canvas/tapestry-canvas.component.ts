@@ -15,7 +15,7 @@ import { CanvasRendererService } from './canvas-renderer.service';
   providers: [GraphSimulationService, CanvasRendererService]
 })
 export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
-  private store = inject(TapestryStore);
+  protected store = inject(TapestryStore);
   private simulation = inject(GraphSimulationService);
   private renderer = inject(CanvasRendererService);
   private canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('graphCanvas');
@@ -30,7 +30,6 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
   protected hoveredEdgeGroup = signal<SimulationLink[] | null>(null);
   protected showLabels = signal<boolean>(true);
   protected graphDensity = signal<number>(50);
-  protected filterText = signal<string>('');
   protected mousePosition = { x: 0, y: 0 };
 
   protected edgeGroupSource(group: SimulationLink[]): SimulationNode {
@@ -51,7 +50,8 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
 
     effect(() => {
       this.showLabels();
-      this.filterText();
+      this.store.filterText();
+      this.store.selectedNodeId();
       if (this.ctx) requestAnimationFrame(() => this.draw());
     });
 
@@ -71,6 +71,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
 
     canvas.addEventListener('mousemove', this.onMouseMove);
     canvas.addEventListener('mouseout', this.onMouseOut);
+    canvas.addEventListener('click', this.onClick);
 
     this.handlePerspective(this.store.nodes(), this.store.edges(), this.store.activePerspective());
   }
@@ -82,6 +83,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     if (canvas) {
       canvas.removeEventListener('mousemove', this.onMouseMove);
       canvas.removeEventListener('mouseout', this.onMouseOut);
+      canvas.removeEventListener('click', this.onClick);
     }
   }
 
@@ -109,7 +111,8 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
       hoveredNode: this.hoveredNode(),
       hoveredEdgeGroup: this.hoveredEdgeGroup(),
       showLabels: this.showLabels(),
-      filterText: this.filterText()
+      filterText: this.store.filterText(),
+      selectedNodeId: this.store.selectedNodeId()
     });
   }
 
@@ -195,6 +198,20 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     const edgeGroup = node ? [] : this.simulation.findEdgesAt(worldX, worldY);
     this.hoveredEdgeGroup.set(edgeGroup.length > 0 ? edgeGroup : null);
     this.draw();
+  };
+
+  private onClick = (event: MouseEvent): void => {
+    const canvas = this.canvasRef()!.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+    const worldX = (localX - this.transform.x) / this.transform.k;
+    const worldY = (localY - this.transform.y) / this.transform.k;
+
+    const node = this.simulation.findNodeAt(worldX, worldY) ?? null;
+    const currentId = this.store.selectedNodeId();
+    // Toggle off if clicking the already-selected node
+    this.store.selectNode(node && node.id !== currentId ? node.id : null);
   };
 
   private onMouseOut = (): void => {

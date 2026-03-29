@@ -1,0 +1,91 @@
+@if (selectedNode(); as node) {
+  <div class="panel">
+    <div class="panel-header">
+      <span class="type-badge type-{{ node.type.toLowerCase() }}">{{ node.type }}</span>
+      <button class="close-btn" (click)="close()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="label-section">
+      <input
+        class="label-input"
+        [value]="node.label"
+        (blur)="updateLabel($event)"
+        (keydown.enter)="$any($event.target).blur()"
+        placeholder="Node label"
+      />
+    </div>
+
+    <div class="section">
+      <div class="section-title">Description</div>
+      <textarea
+        class="description-input"
+        [value]="node.description ?? ''"
+        (blur)="updateDescription($event)"
+        placeholder="Add a description…"
+        rows="3"
+      ></textarea>
+    </div>
+
+    @if (visibleAttributes().length > 0) {
+      <div class="section">
+        <div class="section-title">Details</div>
+        @for (attr of visibleAttributes(); track attr.key) {
+          <div class="attr-row">
+            <span class="attr-key">{{ attr.label }}</span>
+            <input
+              class="attr-value"
+              [value]="attr.value"
+              (blur)="updateAttribute(attr.key, $event)"
+              (keydown.enter)="$any($event.target).blur()"
+            />
+          </div>
+        }
+      </div>
+    }
+
+    @if (connections().length > 0) {
+      <div class="section connections-section">
+        <div class="section-title">Connections ({{ connections().length }})</div>
+        @for (conn of connections(); track conn.edgeId) {
+          @if (confirmingDeleteEdgeId() === conn.edgeId) {
+            <div class="confirm-row">
+              <span class="confirm-text">Remove "{{ conn.predicate }}"?</span>
+              <button class="confirm-yes" (click)="deleteEdge(conn.edgeId)">Remove</button>
+              <button class="confirm-no" (click)="confirmingDeleteEdgeId.set(null)">Cancel</button>
+            </div>
+          } @else {
+            <div class="connection-row">
+              <button class="conn-navigate" (click)="selectConnection(conn.nodeId)">
+                <span class="conn-arrow" [class.outgoing]="conn.direction === 'out'">
+                  {{ conn.direction === 'out' ? '→' : '←' }}
+                </span>
+                <div class="conn-body">
+                  <span class="conn-label">{{ conn.nodeLabel }}</span>
+                  <span class="conn-predicate">{{ conn.predicate }}</span>
+                </div>
+                <span class="conn-type type-{{ conn.nodeType.toLowerCase() }}">{{ conn.nodeType }}</span>
+              </button>
+              <button class="edge-delete-btn" (click)="confirmingDeleteEdgeId.set(conn.edgeId)" aria-label="Delete edge">✕</button>
+            </div>
+          }
+        }
+      </div>
+    }
+
+    <div class="delete-section">
+      @if (confirmingDelete()) {
+        <div class="confirm-delete">
+          <span class="confirm-text">Delete "{{ node.label }}" and all its connections?</span>
+          <div class="confirm-actions">
+            <button class="confirm-yes" (click)="deleteNode()">Delete</button>
+            <button class="confirm-no" (click)="confirmingDelete.set(false)">Cancel</button>
+          </div>
+        </div>
+      } @else {
+        <button class="delete-node-btn" (click)="confirmingDelete.set(true)">
+          Delete node
+        </button>
+      }
+    </div>
+  </div>
+}

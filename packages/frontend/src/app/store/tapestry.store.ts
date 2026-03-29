@@ -49,6 +49,8 @@ export interface TapestryState {
   isSaving: boolean;
   projectsLoaded: boolean;
   isInitialEmpty: boolean;
+  selectedNodeId: string | null;
+  filterText: string;
 }
 
 const initialState: TapestryState = {
@@ -63,6 +65,8 @@ const initialState: TapestryState = {
   isSaving: false,
   projectsLoaded: false,
   isInitialEmpty: false,
+  selectedNodeId: null,
+  filterText: '',
 };
 
 export const TapestryStore = signalStore(
@@ -100,6 +104,29 @@ export const TapestryStore = signalStore(
       },
       setPerspective(activePerspective: PerspectiveType) {
         patchState(store, { activePerspective });
+      },
+      selectNode(selectedNodeId: string | null) {
+        patchState(store, { selectedNodeId });
+      },
+      setFilterText(filterText: string) {
+        patchState(store, { filterText });
+      },
+      updateNode(nodeId: string, changes: { label?: string; description?: string | null; attributes?: TapestryNode['attributes'] }) {
+        patchState(store, state => ({
+          nodes: state.nodes.map(n => n.id === nodeId ? { ...n, ...changes } : n)
+        }));
+      },
+      deleteNode(nodeId: string) {
+        patchState(store, state => ({
+          nodes: state.nodes.filter(n => n.id !== nodeId),
+          edges: state.edges.filter(e => e.sourceId !== nodeId && e.targetId !== nodeId),
+          selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
+        }));
+      },
+      deleteEdge(edgeId: string) {
+        patchState(store, state => ({
+          edges: state.edges.filter(e => e.id !== edgeId),
+        }));
       },
       setLoading(isLoading: boolean) {
         patchState(store, { isLoading });
