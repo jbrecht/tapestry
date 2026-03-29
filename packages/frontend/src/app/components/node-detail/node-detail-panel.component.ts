@@ -1,4 +1,4 @@
-import { Component, inject, computed, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, computed, signal, effect, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { TapestryNode, TapestryStore } from '../../store/tapestry.store';
 import { attrLabel } from '../../utils/attr-label';
 
@@ -29,6 +29,7 @@ const SKIP_ATTRS = new Set(['coordinates']);
 })
 export class NodeDetailPanelComponent {
   protected store = inject(TapestryStore);
+  private cdr = inject(ChangeDetectorRef);
 
   protected selectedNode = computed(() => {
     const id = this.store.selectedNodeId();
@@ -76,6 +77,66 @@ export class NodeDetailPanelComponent {
     return result;
   });
 
+  // ── Draft ──────────────────────────────────────────────────────────────────
+
+  protected isDraft = computed(() => !!this.selectedNode()?.attributes['_isDraft']);
+
+  protected canSave = computed(() => {
+    const node = this.selectedNode();
+    return !!node && node.label.trim().length > 0 && node.label !== 'New Node';
+  });
+
+  protected saveDraft() {
+    const node = this.selectedNode();
+    if (!node) return;
+    const { _isDraft, ...cleanAttrs } = node.attributes;
+    this.store.updateNode(node.id, { attributes: cleanAttrs });
+  }
+
+  protected discardDraft() {
+    const node = this.selectedNode();
+    if (node) this.store.deleteNode(node.id);
+  }
+
+  // ── Geocode ────────────────────────────────────────────────────────────────
+
+  protected geocodeStatus = signal<'idle' | 'loading' | 'success' | 'not-found'>('idle');
+
+  constructor() {
+    effect(() => {
+      this.store.selectedNodeId();
+      this.geocodeStatus.set('idle');
+    });
+  }
+
+  protected async runGeocode(inputValue: string) {
+    const node = this.selectedNode();
+    if (!node) return;
+    const query = inputValue.trim() || node.label;
+    this.geocodeStatus.set('loading');
+    this.cdr.markForCheck();
+
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'Tapestry/1.0 (knowledge graph application)' } });
+      const data = await res.json() as Array<{ lat: string; lon: string }>;
+
+      if (data.length > 0) {
+        const coords = { x: parseFloat(data[0].lon), y: parseFloat(data[0].lat) };
+        const { _geocodeFailed, ...cleanAttrs } = node.attributes;
+        this.store.updateNode(node.id, { attributes: { ...cleanAttrs, coordinates: coords } });
+        this.geocodeStatus.set('success');
+      } else {
+        this.geocodeStatus.set('not-found');
+      }
+    } catch {
+      this.geocodeStatus.set('not-found');
+    }
+    this.cdr.markForCheck();
+  }
+
+  // ── General ────────────────────────────────────────────────────────────────
+
   protected confirmingDelete = signal(false);
   protected confirmingDeleteEdgeId = signal<string | null>(null);
 
@@ -93,7 +154,6 @@ export class NodeDetailPanelComponent {
   protected deleteNode() {
     const node = this.selectedNode();
     if (node) this.store.deleteNode(node.id);
-    // selectedNodeId is cleared by the store, panel closes automatically
   }
 
   protected deleteEdge(edgeId: string) {

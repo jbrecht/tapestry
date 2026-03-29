@@ -178,7 +178,7 @@ export const TapestryStore = signalStore(
         patchState(store, state => ({
           undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
           redoStack: [],
-          nodes: [...state.nodes, { ...node, id }],
+          nodes: [...state.nodes, { ...node, id, attributes: { ...node.attributes, _isDraft: true } }],
           selectedNodeId: id,
         }));
       },

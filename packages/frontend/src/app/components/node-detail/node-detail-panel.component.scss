@@ -103,6 +103,51 @@
   }
 }
 
+// ── Draft banner ──────────────────────────────────────────────────────────────
+
+.draft-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #fff8ec;
+  border-bottom: 1px solid #ffe0a0;
+  font-size: 12px;
+  color: #a06000;
+  flex-shrink: 0;
+}
+
+.draft-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.draft-discard, .draft-save {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.draft-discard {
+  background: transparent;
+  border: 1px solid #ccc;
+  color: #666;
+  &:hover { background: #f0f0f0; }
+}
+
+.draft-save {
+  background: #f5a623;
+  border: 1px solid #e09000;
+  color: #fff;
+  font-weight: 500;
+  &:hover:not(:disabled) { background: #e09000; }
+  &:disabled { opacity: 0.4; cursor: default; }
+}
+
 // ── Label ─────────────────────────────────────────────────────────────────────
 
 .label-section {
@@ -217,6 +262,58 @@
   &:focus {
     border-color: #f5a623;
   }
+}
+
+// ── Geocode ───────────────────────────────────────────────────────────────────
+
+.geocode-row {
+  display: flex;
+  gap: 6px;
+}
+
+.geocode-input {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  &:focus { border-color: #f5a623; }
+}
+
+.geocode-btn {
+  padding: 5px 12px;
+  background: #f5a623;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover:not(:disabled) { background: #e09000; }
+  &:disabled { opacity: 0.5; cursor: default; }
+}
+
+.geocode-feedback {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.geocode-ok   { color: #2ca02c; }
+.geocode-fail { color: #888; }
+
+.inline-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: #1a73e8;
+  cursor: pointer;
+  text-decoration: underline;
+  font-family: inherit;
 }
 
 // ── Connections ───────────────────────────────────────────────────────────────

@@ -21,6 +21,16 @@
       </div>
     </div>
 
+    @if (isDraft()) {
+      <div class="draft-banner">
+        <span>New node — give it a label to save</span>
+        <div class="draft-actions">
+          <button class="draft-discard" (click)="discardDraft()">Discard</button>
+          <button class="draft-save" [disabled]="!canSave()" (click)="saveDraft()">Save</button>
+        </div>
+      </div>
+    }
+
     <div class="label-section">
       <input
         class="label-input"
@@ -67,6 +77,34 @@
         }
       </div>
     }
+
+    <div class="section geocode-section">
+        <div class="section-title">Find on map</div>
+        <div class="geocode-row">
+          <input
+            #geocodeInput
+            class="geocode-input"
+            [placeholder]="node.label"
+            (keydown.enter)="runGeocode(geocodeInput.value)"
+          />
+          <button class="geocode-btn" (click)="runGeocode(geocodeInput.value)" [disabled]="geocodeStatus() === 'loading'">
+            @if (geocodeStatus() === 'loading') {
+              …
+            } @else {
+              Search
+            }
+          </button>
+        </div>
+        @if (geocodeStatus() === 'not-found') {
+          <div class="geocode-feedback geocode-fail">
+            Not found — try the
+            <button class="inline-link" (click)="startPinning(node.id)">pin tool</button>
+          </div>
+        }
+        @if (geocodeStatus() === 'success') {
+          <div class="geocode-feedback geocode-ok">Location set ✓</div>
+        }
+      </div>
 
     @if (connections().length > 0) {
       <div class="section connections-section">
