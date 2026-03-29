@@ -6,12 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { TapestryStore } from '../store/tapestry.store';
-import { HttpClient } from '@angular/common/http';
-import { rxResource } from '@angular/core/rxjs-interop';
 import { environment } from '../../environments/environment';
-import { patchState } from '@ngrx/signals';
-import { of } from 'rxjs';
-import { firstValueFrom } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 const NODE_COLORS: Record<string, string> = {
@@ -37,7 +32,6 @@ const NODE_COLORS: Record<string, string> = {
 })
 export class ChatComponent {
   protected store = inject(TapestryStore);
-  private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
 
   protected activeTab = signal<'chat' | 'extract'>('chat');
@@ -46,26 +40,59 @@ export class ChatComponent {
   protected extractText = signal('');
   protected extractStatus = signal<'idle' | 'loading' | 'done' | 'error'>('idle');
   protected extractSummary = signal('');
+  protected extractProgress = signal('');
 
   protected async onExtract() {
     const text = this.extractText().trim();
     if (!text || this.extractStatus() === 'loading') return;
     this.extractStatus.set('loading');
     this.extractSummary.set('');
+    this.extractProgress.set('Starting…');
+
     try {
-      const result = await firstValueFrom(
-        this.http.post<{ nodes: any[]; edges: any[]; summary: string }>(
-          `${environment.apiUrl}/extract`,
-          { text, nodes: this.store.nodes(), edges: this.store.edges() }
-        )
-      );
-      this.store.updateGraph(result.nodes, result.edges);
-      this.extractSummary.set(result.summary);
-      this.extractStatus.set('done');
-      this.extractText.set('');
+      const response = await fetch(`${environment.apiUrl}/extract`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, nodes: this.store.nodes(), edges: this.store.edges() }),
+      });
+
+      if (!response.ok || !response.body) throw new Error('Bad response');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const event = JSON.parse(line.slice(6));
+          if (event.type === 'start') {
+            this.extractProgress.set(`Processing ${event.total} chunk${event.total !== 1 ? 's' : ''}…`);
+          } else if (event.type === 'progress') {
+            this.extractProgress.set(`Chunk ${event.chunk} of ${event.total}…`);
+          } else if (event.type === 'result') {
+            this.store.updateGraph(event.nodes, event.edges);
+            this.extractSummary.set(event.summary);
+            this.extractStatus.set('done');
+            this.extractText.set('');
+            this.extractProgress.set('');
+          } else if (event.type === 'error') {
+            this.extractSummary.set(event.message);
+            this.extractStatus.set('error');
+            this.extractProgress.set('');
+          }
+        }
+      }
     } catch {
       this.extractSummary.set('Extraction failed — check server logs.');
       this.extractStatus.set('error');
+      this.extractProgress.set('');
     }
   }
 
@@ -75,54 +102,13 @@ export class ChatComponent {
 
   // Local UI State
   userInput = signal('');
-  // Pending message to be sent
-  // Pending message to be sent
-  pendingMessage = signal<{ text: string, id: number } | null>(null);
-
-  /**
-   * The Loom Resource
-   * This reactively triggers whenever userInput changes (via the send method)
-   */
-  loomResource = rxResource({
-    params: () => {
-      const pm = this.pendingMessage();
-      if (!pm) return null;
-
-      return {
-        message: pm.text,
-        nodes: this.store.nodes(),
-        edges: this.store.edges(),
-        history: this.store.messages().map(m => ({ role: m.role, content: m.content }))
-      };
-    },
-    stream: ({params: req}) => {
-      if (!req) return of(null);
-      
-      return this.http.post<any>(`${environment.apiUrl}/weave`, req);
-    }
-  });
+  isLoading = signal(false);
+  streamingReply = signal('');
 
   isListening = signal(false);
   private recognition: SpeechRecognition | null = null;
 
   constructor() {
-    // Effect to synchronize the AI's response with the Global Signal Store
-    effect(() => {
-      const result = this.loomResource.value();
-      if (result) {
-        // Update the Shared Graph State
-        this.store.updateGraph(result.nodes, result.edges);
-
-        // Update local chat UI - Save to Store!
-        this.store.addChatMessage('assistant', result.reply);
-        
-        // Reset input for next turn
-        
-        // Reset input for next turn
-        this.userInput.set('');
-        this.pendingMessage.set(null);
-      }
-    });
 
     // Effect to scroll to bottom when messages change
     effect(() => {
@@ -250,15 +236,60 @@ export class ChatComponent {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  onSend() {
+  async onSend() {
     const val = this.userInput().trim();
-    if (!val) return;
+    if (!val || this.isLoading()) return;
 
-    // 1. Log the user's thought
     this.store.addChatMessage('user', val);
-    this.store.setLoading(true);
+    this.userInput.set('');
+    this.isLoading.set(true);
+    this.streamingReply.set('');
 
-    // 2. Trigger the resource via pendingMessage
-    this.pendingMessage.set({ text: val, id: Date.now() });
+    try {
+      const response = await fetch(`${environment.apiUrl}/weave`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: val,
+          nodes: this.store.nodes(),
+          edges: this.store.edges(),
+          history: this.store.messages().map(m => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      if (!response.ok || !response.body) throw new Error('Bad response');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const event = JSON.parse(line.slice(6));
+          if (event.type === 'token') {
+            this.streamingReply.update(r => r + event.text);
+          } else if (event.type === 'result') {
+            this.store.updateGraph(event.nodes, event.edges);
+            this.store.addChatMessage('assistant', event.reply || this.streamingReply());
+            this.streamingReply.set('');
+          } else if (event.type === 'error') {
+            this.store.addChatMessage('assistant', event.message);
+            this.streamingReply.set('');
+          }
+        }
+      }
+    } catch {
+      this.store.addChatMessage('assistant', 'Something went wrong — check server logs.');
+      this.streamingReply.set('');
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 }

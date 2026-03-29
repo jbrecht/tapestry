@@ -100,8 +100,9 @@
   flex-shrink: 0;
 }
 
-.extract-ok  { background: #2ca02c22; color: #2ca02c; }
-.extract-err { background: #d6272822; color: #d62728; }
+.extract-ok       { background: #2ca02c22; color: #2ca02c; }
+.extract-err      { background: #d6272822; color: #d62728; }
+.extract-progress { background: transparent; color: var(--text-secondary, #888); font-style: italic; }
 
 // ─────────────────────────────────────────────────────────────────────────────
 

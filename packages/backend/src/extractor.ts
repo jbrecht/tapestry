@@ -129,7 +129,7 @@ async function geocodeMissingPlaces(nodes: TapestryNode[], previousNodeIds: Set<
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function sanitizeForPrompt(nodes: TapestryNode[]): object[] {
+export function sanitizeForPrompt(nodes: TapestryNode[]): object[] {
   return nodes.map(({ id, label, type, description, attributes }) => ({
     id, label, type, description,
     attributes: Object.fromEntries(

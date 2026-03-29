@@ -62,7 +62,7 @@ The chat box is not the right place for source material. Ingestion is a separate
 
 ## Project Management
 
-- [ ] **Project delete** — add a destructive delete option to the Edit Project dialog (with confirmation)
+- [x] **Project delete** — already exists in the project switcher menu
 - [ ] **Project duplication** — clone an existing project as a starting point
 
 ---

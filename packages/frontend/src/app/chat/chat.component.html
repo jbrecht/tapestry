@@ -21,7 +21,12 @@
         </div>
       }
 
-      @if (loomResource.isLoading()) {
+      @if (streamingReply()) {
+        <div class="message assistant">
+          <span class="label">Loom</span>
+          <p>{{ streamingReply() }}</p>
+        </div>
+      } @else if (isLoading()) {
         <div class="message assistant loading">
           <span>The Loom is spinning...</span>
         </div>
@@ -52,11 +57,11 @@
                   cdkAutosizeMaxRows="6"
                   [(ngModel)]="userInput"
                   (keydown.enter)="onEnter($event)"
-                  [disabled]="loomResource.isLoading()"></textarea>
-        <button mat-icon-button matSuffix (click)="toggleListening()" [color]="isListening() ? 'warn' : ''" [class.listening]="isListening()" [disabled]="loomResource.isLoading()" class="mic-button">
+                  [disabled]="isLoading()"></textarea>
+        <button mat-icon-button matSuffix (click)="toggleListening()" [color]="isListening() ? 'warn' : ''" [class.listening]="isListening()" [disabled]="isLoading()" class="mic-button">
           <mat-icon>{{ isListening() ? 'mic' : 'mic_none' }}</mat-icon>
         </button>
-        <button mat-icon-button matSuffix (click)="onSend()" [disabled]="loomResource.isLoading()">
+        <button mat-icon-button matSuffix (click)="onSend()" [disabled]="isLoading()">
           <mat-icon>send</mat-icon>
         </button>
       </mat-form-field>
@@ -72,6 +77,9 @@
         placeholder="Paste text here…"
         [disabled]="extractStatus() === 'loading'"
       ></textarea>
+      @if (extractStatus() === 'loading') {
+        <div class="extract-feedback extract-progress">{{ extractProgress() }}</div>
+      }
       @if (extractStatus() === 'done') {
         <div class="extract-feedback extract-ok">{{ extractSummary() }}</div>
       }
@@ -82,7 +90,7 @@
         class="extract-btn"
         (click)="onExtract()"
         [disabled]="!extractText().trim() || extractStatus() === 'loading'">
-        {{ extractStatus() === 'loading' ? 'Extracting…' : 'Extract into graph' }}
+        {{ extractStatus() === 'loading' ? extractProgress() || 'Extracting…' : 'Extract into graph' }}
       </button>
     </div>
   }

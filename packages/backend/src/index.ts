@@ -1,10 +1,11 @@
 import express from "express";
 import cors from "cors";
 import { StateGraph, START, END } from "@langchain/langgraph";
-import { HumanMessage, BaseMessage, AIMessage } from "@langchain/core/messages";
+import { HumanMessage, BaseMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
+import { ChatOpenAI } from "@langchain/openai";
 import { FRONTEND_URL, PORT } from "./config.js";
 import { TapestryState } from "./state.js";
-import { extractionNode } from "./extractor.js";
+import { extractionNode, sanitizeForPrompt } from "./extractor.js";
 import authRoutes from "./routes/auth.js";
 import projectRoutes from "./routes/projects.js";
 import userRoutes from "./routes/users.js";
@@ -32,62 +33,130 @@ const workflow = new StateGraph(TapestryState)
 
 const tapestryApp = workflow.compile();
 
-// 3. API Endpoint
+// 3. Weave endpoint — SSE stream: reply tokens first, then graph delta
 app.post("/weave", async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
   try {
     const { message, history, nodes, edges } = req.body;
 
-    const messageHistory: BaseMessage[] = (history || []).map((msg: any) =>
+    const systemPrompt = `You are the Loom, a thoughtful assistant helping build a knowledge graph.
+Current nodes: ${JSON.stringify(sanitizeForPrompt(nodes || []))}
+Respond conversationally and helpfully. Ask a follow-up question to gather more detail.`;
+
+    const chatHistory: BaseMessage[] = (history || []).map((msg: any) =>
       msg.role === 'user' ? new HumanMessage(msg.content) : new AIMessage(msg.content)
     );
 
-    const initialState = {
-      messages: [new HumanMessage(message)],
-      nodes: nodes || [],
-      edges: edges || [],
-    };
+    const streamingModel = new ChatOpenAI({ modelName: "gpt-4o", temperature: 0.4, streaming: true });
 
-    const result = await tapestryApp.invoke(initialState);
+    // Run streaming reply and structured extraction in parallel
+    const [streamResult, extractResult] = await Promise.all([
+      // A) Stream conversational reply tokens
+      (async () => {
+        const stream = await streamingModel.stream([
+          new SystemMessage(systemPrompt),
+          ...chatHistory,
+          new HumanMessage(message),
+        ]);
+        let fullReply = '';
+        for await (const chunk of stream) {
+          const token = typeof chunk.content === 'string' ? chunk.content : '';
+          if (token) {
+            fullReply += token;
+            send({ type: 'token', text: token });
+          }
+        }
+        return fullReply;
+      })(),
+      // B) Structured extraction for graph update
+      tapestryApp.invoke({
+        messages: [new HumanMessage(message)],
+        nodes: nodes || [],
+        edges: edges || [],
+      }),
+    ]);
 
-    res.json({
-      nodes: result.nodes,
-      edges: result.edges,
-      reply: result.nextPrompt
+    send({
+      type: 'result',
+      nodes: extractResult.nodes,
+      edges: extractResult.edges,
+      reply: streamResult,
     });
   } catch (error) {
     console.error("Loom Error:", error);
-    res.status(500).json({ error: "The loom snagged a thread. Check server logs." });
+    send({ type: 'error', message: "The loom snagged a thread. Check server logs." });
+  } finally {
+    res.end();
   }
 });
 
-// 4. Extract endpoint — document ingestion without chat history
+// ── Chunking helper ──────────────────────────────────────────────────────────
+// Split text into overlapping chunks so entities near boundaries aren't missed.
+// Each chunk is processed sequentially, inheriting the nodes/edges found so far,
+// so entity resolution works across the full document.
+function chunkText(text: string, maxChars = 8000, overlap = 400): string[] {
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const end = Math.min(start + maxChars, text.length);
+    chunks.push(text.slice(start, end));
+    if (end === text.length) break;
+    // Step back by overlap so entities near the boundary appear in both chunks
+    start = end - overlap;
+  }
+  return chunks;
+}
+
+// 4. Extract endpoint — SSE stream, chunked document ingestion
 app.post("/extract", async (req, res) => {
+  const { text, nodes, edges } = req.body;
+  if (!text || !text.trim()) {
+    return res.status(400).json({ error: "No text provided." });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
   try {
-    const { text, nodes, edges } = req.body;
-    if (!text || !text.trim()) {
-      return res.status(400).json({ error: "No text provided." });
-    }
-
-    const initialState = {
-      messages: [new HumanMessage(text)],
-      nodes: nodes || [],
-      edges: edges || [],
-    };
-
-    const result = await tapestryApp.invoke(initialState);
+    const chunks = chunkText(text.trim());
+    console.log(`[extract] Processing ${chunks.length} chunk(s) from ${text.length} chars`);
+    send({ type: 'start', total: chunks.length });
 
     const prevIds = new Set((nodes || []).map((n: any) => n.id));
-    const addedNodes = result.nodes.filter((n: any) => !prevIds.has(n.id));
-    const addedEdges = result.edges.length - (edges || []).length;
+    let currentNodes = nodes || [];
+    let currentEdges = edges || [];
 
-    res.json({
-      nodes: result.nodes,
-      edges: result.edges,
-      summary: `Added ${addedNodes.length} node${addedNodes.length !== 1 ? 's' : ''}, ${Math.max(0, addedEdges)} edge${addedEdges !== 1 ? 's' : ''}.`
+    for (let i = 0; i < chunks.length; i++) {
+      console.log(`[extract] Chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`);
+      send({ type: 'progress', chunk: i + 1, total: chunks.length });
+      const result = await tapestryApp.invoke({
+        messages: [new HumanMessage(chunks[i])],
+        nodes: currentNodes,
+        edges: currentEdges,
+      });
+      currentNodes = result.nodes;
+      currentEdges = result.edges;
+    }
+
+    const addedNodes = currentNodes.filter((n: any) => !prevIds.has(n.id));
+    const addedEdges = currentEdges.length - (edges || []).length;
+    send({
+      type: 'result',
+      nodes: currentNodes,
+      edges: currentEdges,
+      summary: `Processed ${chunks.length} chunk${chunks.length !== 1 ? 's' : ''}. Added ${addedNodes.length} node${addedNodes.length !== 1 ? 's' : ''}, ${Math.max(0, addedEdges)} edge${addedEdges !== 1 ? 's' : ''}.`
     });
   } catch (error) {
     console.error("Extract Error:", error);
-    res.status(500).json({ error: "Extraction failed. Check server logs." });
+    send({ type: 'error', message: 'Extraction failed. Check server logs.' });
+  } finally {
+    res.end();
   }
 });
 
