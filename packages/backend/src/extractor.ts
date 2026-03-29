@@ -127,6 +127,17 @@ async function geocodeMissingPlaces(nodes: TapestryNode[], previousNodeIds: Set<
   return updatedNodes;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function sanitizeForPrompt(nodes: TapestryNode[]): object[] {
+  return nodes.map(({ id, label, type, description, attributes }) => ({
+    id, label, type, description,
+    attributes: Object.fromEntries(
+      Object.entries(attributes).filter(([k]) => !k.startsWith('_'))
+    ),
+  }));
+}
+
 // ─── Extraction node ─────────────────────────────────────────────────────────
 
 export async function extractionNode(state: typeof TapestryState.State) {
@@ -134,7 +145,7 @@ export async function extractionNode(state: typeof TapestryState.State) {
   const structuredModel = model.withStructuredOutput(TapestryExtractionSchema, { name: "extract_tapestry_v2", strict: true });
 
   const systemPrompt = `You are the Loom. Weave the input into the current Knowledge Graph.
-    Current Nodes: ${JSON.stringify(state.nodes)}
+    Current Nodes: ${JSON.stringify(sanitizeForPrompt(state.nodes))}
 
     Rules:
     1. Entity Resolution: If an entity exists (check 'label'), do NOT create a new node.
