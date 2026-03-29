@@ -3,6 +3,7 @@ import { DOCUMENT } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
 import { TapestryStore } from '../store/tapestry.store';
 import { ProjectCreateDialogComponent } from '../components/project/project-create-dialog.component';
+import { HelpModalComponent } from '../components/help/help-modal.component';
 import { ChatComponent } from '../chat/chat.component';
 import { TapestryCanvasComponent } from '../canvas/tapestry-canvas.component';
 import { TapestryTimelineComponent } from '../timeline/tapestry-timeline.component';
@@ -52,6 +53,10 @@ export class TapestryComponent implements OnDestroy {
     this.document.removeEventListener('keydown', this.keydownListener);
   }
 
+  openHelp() {
+    this.dialog.open(HelpModalComponent, { panelClass: 'help-dialog' });
+  }
+
   private onKeyDown(event: KeyboardEvent) {
     const tag = (this.document.activeElement as HTMLElement)?.tagName;
     const isTyping = tag === 'INPUT' || tag === 'TEXTAREA';
@@ -60,6 +65,8 @@ export class TapestryComponent implements OnDestroy {
     if (event.key === 'Escape') {
       this.store.setPinningNode(null);
       this.store.selectNode(null);
+    } else if (!isTyping && event.key === '?') {
+      this.openHelp();
     } else if (!isTyping && ctrlOrCmd && event.shiftKey && event.key.toLowerCase() === 'z') {
       event.preventDefault();
       this.store.redo();

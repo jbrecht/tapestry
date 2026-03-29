@@ -175,6 +175,18 @@ export class NodeDetailPanelComponent {
 
   protected confirmingDelete = signal(false);
   protected confirmingDeleteEdgeId = signal<string | null>(null);
+  protected editingEdgeId = signal<string | null>(null);
+
+  protected startEditEdge(edgeId: string) {
+    this.confirmingDeleteEdgeId.set(null);
+    this.editingEdgeId.set(edgeId);
+  }
+
+  protected saveEdgePredicate(edgeId: string, value: string) {
+    const normalised = value.trim().toUpperCase().replace(/\s+/g, '_');
+    if (normalised) this.store.updateEdge(edgeId, normalised);
+    this.editingEdgeId.set(null);
+  }
 
   protected startPinning(nodeId: string) {
     this.store.setPinningNode(nodeId);

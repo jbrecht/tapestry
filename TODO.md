@@ -14,11 +14,11 @@ A living list of planned work, roughly ordered by priority.
 
 ## Core UX
 
-- [ ] **Import JSON** — complement to the existing Export JSON; load a previously exported `.json` file back into a project
-- [ ] **Edge editing** — currently edges can be deleted but not renamed; allow editing the predicate inline in the connections list
+- [x] **Import JSON** — upload button in top bar merges nodes/edges from a `.json` file (deduplicates by ID)
+- [x] **Edge editing** — click predicate label in connections list to edit inline; Enter/blur saves, Escape cancels
 - [ ] **Bulk select & delete** — shift-click or lasso-select multiple nodes in the canvas, then delete or group them
-- [ ] **Keyboard shortcut reference** — a `?` or `/` hotkey that opens a cheat-sheet overlay (Esc, ⌘Z, ⌘⇧Z, etc.)
-- [ ] **Help modal** — `?` button in the top bar opens a modal with how-tos (Getting Started, Nodes, Connections, Map, Chat & AI, Keyboard Shortcuts); static content for now, AI-assisted help later once feature set is stable
+- [x] **Keyboard shortcut reference** — `?` key and `?` button in top bar open help modal with full shortcut table
+- [x] **Help modal** — sections for Getting Started, Nodes, Connections, Map, and Keyboard Shortcuts
 
 ---
 
@@ -31,7 +31,7 @@ A living list of planned work, roughly ordered by priority.
 
 ## AI / Chat
 
-- [ ] **Streaming AI responses** — stream the assistant reply token-by-token so the chat feels faster
+- [x] **Streaming AI responses** — reply tokens stream in parallel with structured extraction; live bubble appears immediately
 - [ ] **Selective re-extraction** — ability to re-run extraction on a single message without re-sending it
 - [ ] **Suggested edges** — after extraction, AI proposes relationships between newly added nodes and existing ones
 

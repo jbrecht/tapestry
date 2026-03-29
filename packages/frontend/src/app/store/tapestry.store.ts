@@ -218,6 +218,13 @@ export const TapestryStore = signalStore(
           edges: state.edges.filter(e => e.id !== edgeId),
         }));
       },
+      updateEdge(edgeId: string, predicate: string) {
+        patchState(store, state => ({
+          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          redoStack: [],
+          edges: state.edges.map(e => e.id === edgeId ? { ...e, predicate } : e),
+        }));
+      },
       setLoading(isLoading: boolean) {
         patchState(store, { isLoading });
       },
