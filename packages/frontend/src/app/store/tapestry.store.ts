@@ -51,6 +51,8 @@ export interface TapestryState {
   isInitialEmpty: boolean;
   selectedNodeId: string | null;
   filterText: string;
+  undoStack: Array<{ nodes: TapestryNode[]; edges: TapestryEdge[] }>;
+  redoStack: Array<{ nodes: TapestryNode[]; edges: TapestryEdge[] }>;
 }
 
 const initialState: TapestryState = {
@@ -67,15 +69,17 @@ const initialState: TapestryState = {
   isInitialEmpty: false,
   selectedNodeId: null,
   filterText: '',
+  undoStack: [],
+  redoStack: [],
 };
 
 export const TapestryStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
-  withComputed(({ nodes, edges }) => ({
+  withComputed(({ nodes, edges, undoStack, redoStack }) => ({
     // Perspective Helpers
     mapNodes: computed(() => nodes().filter(n => !!n.attributes.coordinates)),
-    timelineNodes: computed(() => 
+    timelineNodes: computed(() =>
       nodes()
         .filter(n => !!n.attributes['startTime'])
         .sort((a, b) => {
@@ -87,15 +91,59 @@ export const TapestryStore = signalStore(
     // World Stats (Fun for the UI)
     nodeCount: computed(() => nodes().length),
     edgeCount: computed(() => edges().length),
-    isWorldEmpty: computed(() => nodes().length === 0)
+    isWorldEmpty: computed(() => nodes().length === 0),
+    canUndo: computed(() => undoStack().length > 0),
+    canRedo: computed(() => redoStack().length > 0),
   })),
   // 1. Basic Methods & Data-only methods
   withMethods((store) => {
     const projectService = inject(ProjectService);
     
     return {
+      saveToHistory() {
+        patchState(store, state => ({
+          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          redoStack: [],
+        }));
+      },
+      undo() {
+        patchState(store, state => {
+          if (state.undoStack.length === 0) return state;
+          const prev = state.undoStack[state.undoStack.length - 1];
+          return {
+            nodes: prev.nodes,
+            edges: prev.edges,
+            undoStack: state.undoStack.slice(0, -1),
+            redoStack: [...state.redoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          };
+        });
+      },
+      redo() {
+        patchState(store, state => {
+          if (state.redoStack.length === 0) return state;
+          const next = state.redoStack[state.redoStack.length - 1];
+          return {
+            nodes: next.nodes,
+            edges: next.edges,
+            redoStack: state.redoStack.slice(0, -1),
+            undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          };
+        });
+      },
+      addNode(node: Omit<TapestryNode, 'id'>) {
+        patchState(store, state => ({
+          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          redoStack: [],
+          nodes: [...state.nodes, { ...node, id: crypto.randomUUID() }],
+        }));
+      },
       updateGraph(nodes: TapestryNode[], edges: TapestryEdge[]) {
-        patchState(store, { nodes, edges });
+        patchState(store, state => ({
+          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          redoStack: [],
+          nodes,
+          edges,
+        }));
       },
       addChatMessage(role: 'user' | 'assistant', content: string) {
         patchState(store, (state) => ({
@@ -113,11 +161,15 @@ export const TapestryStore = signalStore(
       },
       updateNode(nodeId: string, changes: { label?: string; description?: string | null; attributes?: TapestryNode['attributes'] }) {
         patchState(store, state => ({
+          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          redoStack: [],
           nodes: state.nodes.map(n => n.id === nodeId ? { ...n, ...changes } : n)
         }));
       },
       deleteNode(nodeId: string) {
         patchState(store, state => ({
+          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          redoStack: [],
           nodes: state.nodes.filter(n => n.id !== nodeId),
           edges: state.edges.filter(e => e.sourceId !== nodeId && e.targetId !== nodeId),
           selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
@@ -125,6 +177,8 @@ export const TapestryStore = signalStore(
       },
       deleteEdge(edgeId: string) {
         patchState(store, state => ({
+          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          redoStack: [],
           edges: state.edges.filter(e => e.id !== edgeId),
         }));
       },
@@ -160,7 +214,9 @@ export const TapestryStore = signalStore(
                 edges: data.edges || project.edges || [],
                 messages: data.messages || project.messages || [],
                 activePerspective: (data.activePerspective as PerspectiveType) || (project.activePerspective as PerspectiveType) || 'abstract',
-                isLoading: false
+                isLoading: false,
+                undoStack: [],
+                redoStack: [],
               });
             }),
             catchError((err) => {

@@ -46,7 +46,7 @@ export class NodeDetailPanelComponent {
     if (!node) return [];
     return Object.entries(node.attributes)
       .filter(([key, value]) =>
-        !SKIP_ATTRS.has(key) && value !== null && value !== undefined && value !== ''
+        !SKIP_ATTRS.has(key) && !key.startsWith('_') && value !== null && value !== undefined && value !== ''
       )
       .map(([key, value]) => ({
         key,

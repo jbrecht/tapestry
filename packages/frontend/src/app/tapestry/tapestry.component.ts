@@ -1,7 +1,9 @@
-import { Component, ChangeDetectionStrategy, inject, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, effect, OnDestroy } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
 import { TapestryStore } from '../store/tapestry.store';
 import { ProjectCreateDialogComponent } from '../components/project/project-create-dialog.component';
+import { NodeCreateDialogComponent } from '../components/node-create/node-create-dialog.component';
 import { ChatComponent } from '../chat/chat.component';
 import { TapestryCanvasComponent } from '../canvas/tapestry-canvas.component';
 import { TapestryTimelineComponent } from '../timeline/tapestry-timeline.component';
@@ -16,14 +18,16 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 @Component({
   selector: 'app-tapestry',
   standalone: true,
-  imports: [ChatComponent, TapestryCanvasComponent, TapestryTimelineComponent, TapestryMapComponent, MatSidenavModule, ProjectComponent, PerspectiveSwitcherComponent, TapestryStatsComponent, UserMenuComponent, NodeDetailPanelComponent],
+  imports: [ChatComponent, TapestryCanvasComponent, TapestryTimelineComponent, TapestryMapComponent, MatSidenavModule, ProjectComponent, PerspectiveSwitcherComponent, TapestryStatsComponent, UserMenuComponent, NodeDetailPanelComponent, NodeCreateDialogComponent],
   templateUrl: './tapestry.component.html',
   styleUrl: './tapestry.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TapestryComponent {
+export class TapestryComponent implements OnDestroy {
   store = inject(TapestryStore);
   dialog = inject(MatDialog);
+  private document = inject(DOCUMENT);
+  private keydownListener = (e: KeyboardEvent) => this.onKeyDown(e);
 
   constructor() {
     effect(() => {
@@ -41,5 +45,46 @@ export class TapestryComponent {
         });
       }
     });
+
+    this.document.addEventListener('keydown', this.keydownListener);
+  }
+
+  ngOnDestroy() {
+    this.document.removeEventListener('keydown', this.keydownListener);
+  }
+
+  private onKeyDown(event: KeyboardEvent) {
+    const tag = (this.document.activeElement as HTMLElement)?.tagName;
+    const isTyping = tag === 'INPUT' || tag === 'TEXTAREA';
+    const ctrlOrCmd = event.metaKey || event.ctrlKey;
+
+    if (event.key === 'Escape') {
+      this.store.selectNode(null);
+    } else if (!isTyping && ctrlOrCmd && event.shiftKey && event.key.toLowerCase() === 'z') {
+      event.preventDefault();
+      this.store.redo();
+    } else if (!isTyping && ctrlOrCmd && !event.shiftKey && event.key.toLowerCase() === 'z') {
+      event.preventDefault();
+      this.store.undo();
+    }
+  }
+
+  openAddNodeDialog() {
+    this.dialog.open(NodeCreateDialogComponent, { width: '400px' })
+      .afterClosed()
+      .subscribe(result => {
+        if (result) this.store.addNode(result);
+      });
+  }
+
+  exportJson() {
+    const data = { nodes: this.store.nodes(), edges: this.store.edges() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = this.document.createElement('a');
+    a.href = url;
+    a.download = `${this.store.projectName().replace(/\s+/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 }

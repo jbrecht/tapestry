@@ -148,6 +148,12 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  protected fitAll() {
+    if (!this.map || this.markers.size === 0) return;
+    const latLngs = Array.from(this.markers.values()).map(m => m.getLatLng());
+    this.map.fitBounds(latLngs.map(ll => [ll.lat, ll.lng] as L.LatLngTuple), { padding: [40, 40], maxZoom: 10 });
+  }
+
   private popupContent(node: TapestryNode): string {
     const color = COLORS[node.type] ?? COLORS['Thing'];
     const desc = node.description ? `<div class="pm-desc">${node.description}</div>` : '';

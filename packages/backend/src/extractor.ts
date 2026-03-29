@@ -92,7 +92,7 @@ async function nominatimGeocode(name: string): Promise<{ x: number; y: number } 
 async function geocodeMissingPlaces(nodes: TapestryNode[], previousNodeIds: Set<string>): Promise<TapestryNode[]> {
   // Only geocode Place nodes that are either new or still missing coordinates
   const toGeocode = nodes.filter(
-    n => n.type === 'Place' && !n.attributes['coordinates']
+    n => n.type === 'Place' && !n.attributes['coordinates'] && !n.attributes['_geocodeFailed']
   );
   if (toGeocode.length === 0) return nodes;
 
@@ -112,6 +112,13 @@ async function geocodeMissingPlaces(nodes: TapestryNode[], previousNodeIds: Set<
       }
     } else {
       console.log(`[geocode] ✗ ${place.label} — not found`);
+      const idx = updatedNodes.findIndex(n => n.id === place.id);
+      if (idx !== -1) {
+        updatedNodes[idx] = {
+          ...updatedNodes[idx],
+          attributes: { ...updatedNodes[idx].attributes, _geocodeFailed: true }
+        };
+      }
     }
     // Nominatim ToS: max 1 request per second
     await new Promise(r => setTimeout(r, 1100));
