@@ -1,5 +1,15 @@
 <div #mapContainer class="map-container"></div>
 
+@if (store.pinningNodeId(); as pinId) {
+  <div class="pin-banner">
+    <svg viewBox="0 0 20 20" fill="currentColor" width="13" height="13">
+      <path d="M9.153 1.415a1.75 1.75 0 012.694 0l.507.602 1.991-.353a1.75 1.75 0 011.853.96l.002.005.867 2.003a1.75 1.75 0 01-.418 1.979l-1.53 1.411.052.727a1.75 1.75 0 01-.544 1.43l-.002.002-3.077 2.751a1.75 1.75 0 01-2.416-.148l-.002-.002-1.168-1.351-2.885 2.652a.75.75 0 01-1.018-1.104l2.885-2.652-1.168-1.351a1.75 1.75 0 01.096-2.424l.002-.002 3.078-2.75a1.75 1.75 0 011.44-.505l.728.051 1.41-1.53a1.75 1.75 0 01.623-.502z"/>
+    </svg>
+    Click to place <strong>{{ pinningNodeLabel(pinId) }}</strong>
+    <button class="pin-cancel" (click)="store.setPinningNode(null)">Cancel</button>
+  </div>
+}
+
 @if (store.mapNodes().length > 0) {
   <button class="fit-all-btn" (click)="fitAll()" title="Fit all places">
     <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">

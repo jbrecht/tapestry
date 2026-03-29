@@ -3,7 +3,6 @@ import { DOCUMENT } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
 import { TapestryStore } from '../store/tapestry.store';
 import { ProjectCreateDialogComponent } from '../components/project/project-create-dialog.component';
-import { NodeCreateDialogComponent } from '../components/node-create/node-create-dialog.component';
 import { ChatComponent } from '../chat/chat.component';
 import { TapestryCanvasComponent } from '../canvas/tapestry-canvas.component';
 import { TapestryTimelineComponent } from '../timeline/tapestry-timeline.component';
@@ -19,7 +18,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 @Component({
   selector: 'app-tapestry',
   standalone: true,
-  imports: [ChatComponent, TapestryCanvasComponent, TapestryTimelineComponent, TapestryMapComponent, TapestryTableComponent, MatSidenavModule, ProjectComponent, PerspectiveSwitcherComponent, TapestryStatsComponent, UserMenuComponent, NodeDetailPanelComponent, NodeCreateDialogComponent],
+  imports: [ChatComponent, TapestryCanvasComponent, TapestryTimelineComponent, TapestryMapComponent, TapestryTableComponent, MatSidenavModule, ProjectComponent, PerspectiveSwitcherComponent, TapestryStatsComponent, UserMenuComponent, NodeDetailPanelComponent],
   templateUrl: './tapestry.component.html',
   styleUrl: './tapestry.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -60,6 +59,7 @@ export class TapestryComponent implements OnDestroy {
     const ctrlOrCmd = event.metaKey || event.ctrlKey;
 
     if (event.key === 'Escape') {
+      this.store.setPinningNode(null);
       this.store.selectNode(null);
     } else if (!isTyping && ctrlOrCmd && event.shiftKey && event.key.toLowerCase() === 'z') {
       event.preventDefault();
@@ -68,14 +68,6 @@ export class TapestryComponent implements OnDestroy {
       event.preventDefault();
       this.store.undo();
     }
-  }
-
-  openAddNodeDialog() {
-    this.dialog.open(NodeCreateDialogComponent, { width: '400px' })
-      .afterClosed()
-      .subscribe(result => {
-        if (result) this.store.addNode(result);
-      });
   }
 
   exportJson() {

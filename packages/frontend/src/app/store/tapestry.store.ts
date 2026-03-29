@@ -51,6 +51,7 @@ export interface TapestryState {
   isInitialEmpty: boolean;
   selectedNodeId: string | null;
   filterText: string;
+  pinningNodeId: string | null;
   undoStack: Array<{ nodes: TapestryNode[]; edges: TapestryEdge[] }>;
   redoStack: Array<{ nodes: TapestryNode[]; edges: TapestryEdge[] }>;
 }
@@ -69,6 +70,7 @@ const initialState: TapestryState = {
   isInitialEmpty: false,
   selectedNodeId: null,
   filterText: '',
+  pinningNodeId: null,
   undoStack: [],
   redoStack: [],
 };
@@ -168,7 +170,19 @@ export const TapestryStore = signalStore(
       setFilterText(filterText: string) {
         patchState(store, { filterText });
       },
-      updateNode(nodeId: string, changes: { label?: string; description?: string | null; attributes?: TapestryNode['attributes'] }) {
+      setPinningNode(pinningNodeId: string | null) {
+        patchState(store, { pinningNodeId });
+      },
+      addNodeAndSelect(node: Omit<TapestryNode, 'id'>) {
+        const id = crypto.randomUUID();
+        patchState(store, state => ({
+          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          redoStack: [],
+          nodes: [...state.nodes, { ...node, id }],
+          selectedNodeId: id,
+        }));
+      },
+      updateNode(nodeId: string, changes: { label?: string; type?: TapestryNode['type']; description?: string | null; attributes?: TapestryNode['attributes'] }) {
         patchState(store, state => ({
           undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
           redoStack: [],

@@ -54,6 +54,13 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
       const selectedId = this.store.selectedNodeId();
       if (this.map) this.updateSelectedMarker(selectedId);
     });
+
+    effect(() => {
+      const pinningId = this.store.pinningNodeId();
+      if (this.map) {
+        this.map.getContainer().style.cursor = pinningId ? 'crosshair' : '';
+      }
+    });
   }
 
   ngAfterViewInit() {
@@ -66,6 +73,17 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(this.map);
+
+    this.map.on('click', (e: L.LeafletMouseEvent) => {
+      const pinningId = this.store.pinningNodeId();
+      if (!pinningId) return;
+      const node = this.store.nodes().find(n => n.id === pinningId);
+      if (!node) return;
+      this.store.updateNode(pinningId, {
+        attributes: { ...node.attributes, coordinates: { x: e.latlng.lng, y: e.latlng.lat } },
+      });
+      this.store.setPinningNode(null);
+    });
 
     this.syncMarkers(this.store.mapNodes());
   }
@@ -106,6 +124,7 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
         const marker = L.marker([lat, lng], { icon: makeIcon(color, isSelected) })
           .bindPopup(this.popupContent(node), { maxWidth: 240, closeButton: false })
           .on('click', () => {
+            if (this.store.pinningNodeId()) return;
             const currentId = this.store.selectedNodeId();
             this.store.selectNode(node.id === currentId ? null : node.id);
           });
@@ -146,6 +165,10 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
         this.map?.panTo([lat, lng], { animate: true });
       }
     }
+  }
+
+  protected pinningNodeLabel(id: string): string {
+    return this.store.nodes().find(n => n.id === id)?.label ?? '';
   }
 
   protected fitAll() {

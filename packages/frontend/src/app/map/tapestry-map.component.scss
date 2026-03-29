@@ -10,6 +10,42 @@
   height: 100%;
 }
 
+// ── Pin placement banner ──────────────────────────────────────────────────────
+
+.pin-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: #e65c00;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  pointer-events: auto;
+  white-space: nowrap;
+  font-family: Roboto, sans-serif;
+
+  strong { font-weight: 600; }
+}
+
+.pin-cancel {
+  margin-left: 6px;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 8px;
+  cursor: pointer;
+  &:hover { background: rgba(255,255,255,0.3); }
+}
+
 // ── Fit all button ────────────────────────────────────────────────────────────
 
 .fit-all-btn {

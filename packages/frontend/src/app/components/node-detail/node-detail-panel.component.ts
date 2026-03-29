@@ -1,5 +1,5 @@
 import { Component, inject, computed, signal, ChangeDetectionStrategy } from '@angular/core';
-import { TapestryStore } from '../../store/tapestry.store';
+import { TapestryNode, TapestryStore } from '../../store/tapestry.store';
 import { attrLabel } from '../../utils/attr-label';
 
 interface Connection {
@@ -79,6 +79,11 @@ export class NodeDetailPanelComponent {
   protected confirmingDelete = signal(false);
   protected confirmingDeleteEdgeId = signal<string | null>(null);
 
+  protected startPinning(nodeId: string) {
+    this.store.setPinningNode(nodeId);
+    this.store.setPerspective('map');
+  }
+
   protected close() {
     this.store.selectNode(null);
     this.confirmingDelete.set(false);
@@ -94,6 +99,12 @@ export class NodeDetailPanelComponent {
   protected deleteEdge(edgeId: string) {
     this.store.deleteEdge(edgeId);
     this.confirmingDeleteEdgeId.set(null);
+  }
+
+  protected updateType(event: Event) {
+    const value = (event.target as HTMLSelectElement).value as TapestryNode['type'];
+    const node = this.selectedNode();
+    if (node && value !== node.type) this.store.updateNode(node.id, { type: value });
   }
 
   protected updateLabel(event: Event) {

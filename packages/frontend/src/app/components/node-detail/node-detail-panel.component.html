@@ -1,8 +1,24 @@
 @if (selectedNode(); as node) {
   <div class="panel">
     <div class="panel-header">
-      <span class="type-badge type-{{ node.type.toLowerCase() }}">{{ node.type }}</span>
-      <button class="close-btn" (click)="close()" aria-label="Close">✕</button>
+      <select class="type-select type-{{ node.type.toLowerCase() }}" (change)="updateType($event)">
+        <option value="Person"  [selected]="node.type === 'Person'">Person</option>
+        <option value="Place"   [selected]="node.type === 'Place'">Place</option>
+        <option value="Event"   [selected]="node.type === 'Event'">Event</option>
+        <option value="Thing"   [selected]="node.type === 'Thing'">Thing</option>
+      </select>
+      <div class="header-actions">
+        <button
+          class="pin-btn"
+          [class.active]="store.pinningNodeId() === node.id"
+          (click)="startPinning(node.id)"
+          title="Place on map">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+            <path d="M9.153 1.415a1.75 1.75 0 012.694 0l.507.602 1.991-.353a1.75 1.75 0 011.853.96l.002.005.867 2.003a1.75 1.75 0 01-.418 1.979l-1.53 1.411.052.727a1.75 1.75 0 01-.544 1.43l-.002.002-3.077 2.751a1.75 1.75 0 01-2.416-.148l-.002-.002-1.168-1.351-2.885 2.652a.75.75 0 01-1.018-1.104l2.885-2.652-1.168-1.351a1.75 1.75 0 01.096-2.424l.002-.002 3.078-2.75a1.75 1.75 0 011.44-.505l.728.051 1.41-1.53a1.75 1.75 0 01.623-.502z"/>
+          </svg>
+        </button>
+        <button class="close-btn" (click)="close()" aria-label="Close">✕</button>
+      </div>
     </div>
 
     <div class="label-section">
