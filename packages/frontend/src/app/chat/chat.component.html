@@ -4,6 +4,13 @@
       <div class="message" [class]="msg.role">
         <span class="label">{{ msg.role === 'user' ? 'You' : 'Loom' }}</span>
         <p>{{ msg.content }}</p>
+        @if (msg.role === 'user' && nodesForMessage($index).length > 0) {
+          <button class="inspect-btn" (click)="inspectingIdx.set($index)" title="Highlight extracted nodes">
+            <svg viewBox="0 0 20 20" fill="currentColor" width="12" height="12">
+              <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        }
       </div>
     }
 
@@ -13,6 +20,21 @@
       </div>
     }
   </div>
+
+  @if (inspectingIdx() !== null) {
+    <div class="inspect-overlay">
+      <div class="inspect-header">
+        <span class="inspect-title">Extracted nodes</span>
+        <div class="inspect-legend">
+          @for (node of nodesForMessage(inspectingIdx()!); track node.id) {
+            <button class="legend-badge type-{{ node.type.toLowerCase() }}" (click)="store.selectNode(node.id)">{{ node.label }}</button>
+          }
+        </div>
+        <button class="inspect-close" (click)="inspectingIdx.set(null)" aria-label="Close">✕</button>
+      </div>
+      <div class="inspect-body" [innerHTML]="highlightedHtml(inspectingIdx()!)" (click)="onInspectBodyClick($event)"></div>
+    </div>
+  }
 
   <div class="input-area">
     <mat-form-field appearance="outline" class="chat-input-field">

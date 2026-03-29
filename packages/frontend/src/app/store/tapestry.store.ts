@@ -138,12 +138,21 @@ export const TapestryStore = signalStore(
         }));
       },
       updateGraph(nodes: TapestryNode[], edges: TapestryEdge[]) {
-        patchState(store, state => ({
-          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
-          redoStack: [],
-          nodes,
-          edges,
-        }));
+        patchState(store, state => {
+          const existingIds = new Set(state.nodes.map(n => n.id));
+          const msgIdx = state.messages.length - 1; // index of the user message that triggered this
+          const taggedNodes = nodes.map(n =>
+            !existingIds.has(n.id)
+              ? { ...n, attributes: { ...n.attributes, _msgIdx: msgIdx } }
+              : n
+          );
+          return {
+            undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+            redoStack: [],
+            nodes: taggedNodes,
+            edges,
+          };
+        });
       },
       addChatMessage(role: 'user' | 'assistant', content: string) {
         patchState(store, (state) => ({

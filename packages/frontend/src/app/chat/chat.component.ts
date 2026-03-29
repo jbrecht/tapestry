@@ -11,6 +11,14 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { environment } from '../../environments/environment';
 import { patchState } from '@ngrx/signals';
 import { of } from 'rxjs';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+
+const NODE_COLORS: Record<string, string> = {
+  Person: '#ff7f0e',
+  Event:  '#d62728',
+  Place:  '#2ca02c',
+  Thing:  '#1f77b4',
+};
 
 @Component({
   selector: 'app-chat',
@@ -29,6 +37,9 @@ import { of } from 'rxjs';
 export class ChatComponent {
   protected store = inject(TapestryStore);
   private http = inject(HttpClient);
+  private sanitizer = inject(DomSanitizer);
+
+  protected inspectingIdx = signal<number | null>(null);
 
   readonly messageList = viewChild.required<ElementRef<HTMLDivElement>>('messageList');
 
@@ -157,6 +168,56 @@ export class ChatComponent {
       event.preventDefault();
       this.onSend();
     }
+  }
+
+  protected nodesForMessage(msgIdx: number) {
+    return this.store.nodes().filter(n => n.attributes['_msgIdx'] === msgIdx);
+  }
+
+  protected highlightedHtml(msgIdx: number): SafeHtml {
+    const message = this.store.messages()[msgIdx];
+    if (!message) return this.sanitizer.bypassSecurityTrustHtml('');
+    const nodes = this.nodesForMessage(msgIdx);
+    const text = message.content;
+    if (nodes.length === 0) return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));
+
+    type Match = { start: number; end: number; type: string; nodeId: string };
+    const matches: Match[] = [];
+    for (const node of nodes) {
+      const re = new RegExp(node.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        matches.push({ start: m.index, end: m.index + m[0].length, type: node.type, nodeId: node.id });
+      }
+    }
+    // Sort by position; prefer longer match on tie
+    matches.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+    // Remove overlaps
+    const clean: Match[] = [];
+    let lastEnd = 0;
+    for (const m of matches) {
+      if (m.start >= lastEnd) { clean.push(m); lastEnd = m.end; }
+    }
+
+    let html = '';
+    let cursor = 0;
+    for (const m of clean) {
+      html += this.escapeHtml(text.slice(cursor, m.start));
+      const color = NODE_COLORS[m.type] ?? NODE_COLORS['Thing'];
+      html += `<mark data-node-id="${m.nodeId}" style="background:${color}28;color:${color};border-radius:3px;padding:1px 3px;font-weight:600;cursor:pointer">${this.escapeHtml(text.slice(m.start, m.end))}</mark>`;
+      cursor = m.end;
+    }
+    html += this.escapeHtml(text.slice(cursor));
+    return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  protected onInspectBodyClick(event: MouseEvent) {
+    const nodeId = (event.target as HTMLElement).dataset['nodeId'];
+    if (nodeId) this.store.selectNode(nodeId);
+  }
+
+  private escapeHtml(s: string) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   onSend() {

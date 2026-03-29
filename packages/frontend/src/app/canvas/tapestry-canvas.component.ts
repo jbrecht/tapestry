@@ -26,6 +26,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
   private ctx: CanvasRenderingContext2D | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private transform: d3.ZoomTransform = d3.zoomIdentity;
+  private zoomBehavior: d3.ZoomBehavior<HTMLCanvasElement, unknown> | null = null;
 
   protected hoveredNode = signal<SimulationNode | null>(null);
   protected hoveredEdgeGroup = signal<SimulationLink[] | null>(null);
@@ -60,6 +61,18 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
 
     effect(() => {
       this.simulation.updateForces(this.graphDensity());
+    });
+
+    effect(() => {
+      const selectedId = this.store.selectedNodeId();
+      if (!selectedId || !this.zoomBehavior) return;
+      const node = this.simulation.nodes.find(n => n.id === selectedId);
+      if (!node || node.x == null || node.y == null) return;
+      const canvas = this.canvasRef()?.nativeElement;
+      if (!canvas) return;
+      d3.select(canvas)
+        .transition().duration(350)
+        .call(this.zoomBehavior.translateTo, node.x, node.y);
     });
   }
 
@@ -137,7 +150,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   private setupZoom(canvas: HTMLCanvasElement): void {
-    const zoomBehavior = d3.zoom<HTMLCanvasElement, unknown>()
+    this.zoomBehavior = d3.zoom<HTMLCanvasElement, unknown>()
       .scaleExtent([0.1, 8])
       .filter(event => !event.shiftKey && event.type !== 'dblclick')
       .on('zoom', event => {
@@ -146,7 +159,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
         this.hoveredEdgeGroup.set(null);
         this.draw();
       });
-    d3.select(canvas).call(zoomBehavior);
+    d3.select(canvas).call(this.zoomBehavior);
   }
 
   private setupDrag(canvas: HTMLCanvasElement): void {
