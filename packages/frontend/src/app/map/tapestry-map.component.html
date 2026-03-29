@@ -1,0 +1,8 @@
+<div #mapContainer class="map-container"></div>
+
+@if (store.mapNodes().length === 0) {
+  <div class="empty-state">
+    <p>No places with coordinates yet.</p>
+    <p class="hint">Ask the AI about places — it will extract their geographic coordinates automatically.</p>
+  </div>
+}

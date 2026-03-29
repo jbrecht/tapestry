@@ -5,6 +5,7 @@ import { ProjectCreateDialogComponent } from '../components/project/project-crea
 import { ChatComponent } from '../chat/chat.component';
 import { TapestryCanvasComponent } from '../canvas/tapestry-canvas.component';
 import { TapestryTimelineComponent } from '../timeline/tapestry-timeline.component';
+import { TapestryMapComponent } from '../map/tapestry-map.component';
 import { ProjectComponent } from '../components/project/project.component';
 import { PerspectiveSwitcherComponent } from '../components/perspective-switcher/perspective-switcher.component';
 import { TapestryStatsComponent } from '../components/tapestry-stats/tapestry-stats.component';
@@ -15,7 +16,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 @Component({
   selector: 'app-tapestry',
   standalone: true,
-  imports: [ChatComponent, TapestryCanvasComponent, TapestryTimelineComponent, MatSidenavModule, ProjectComponent, PerspectiveSwitcherComponent, TapestryStatsComponent, UserMenuComponent, NodeDetailPanelComponent],
+  imports: [ChatComponent, TapestryCanvasComponent, TapestryTimelineComponent, TapestryMapComponent, MatSidenavModule, ProjectComponent, PerspectiveSwitcherComponent, TapestryStatsComponent, UserMenuComponent, NodeDetailPanelComponent],
   templateUrl: './tapestry.component.html',
   styleUrl: './tapestry.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

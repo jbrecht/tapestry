@@ -47,7 +47,7 @@ export const NodeExtractionSchema = z.object({
     coordinates: z.object({
       x: z.number(),
       y: z.number()
-    }).nullable().describe("Coordinates if the entity is a location"),
+    }).nullable().describe("Geographic coordinates for Place entities: x = longitude (−180 to 180), y = latitude (−90 to 90). Use real-world decimal degree values. Null for non-Place entities."),
     startTime: z.string().nullable().describe("Date or time an event starts (or its only date)"),
     endTime: z.string().nullable().describe("Date or time an event ends (only if it is a range)"),
     locationType: z.string().nullable().describe("e.g., 'city', 'mountain'"),
