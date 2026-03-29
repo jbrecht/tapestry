@@ -1,0 +1,177 @@
+import { Injectable } from '@angular/core';
+import * as d3 from 'd3';
+import { SimulationNode, SimulationLink } from './graph-simulation.service';
+
+export interface DrawOptions {
+  ctx: CanvasRenderingContext2D;
+  width: number;
+  height: number;
+  transform: d3.ZoomTransform;
+  nodes: SimulationNode[];
+  links: SimulationLink[];
+  hoveredNode: SimulationNode | null;
+  hoveredEdge: SimulationLink | null;
+  showLabels: boolean;
+  filterText: string;
+}
+
+@Injectable()
+export class CanvasRendererService {
+  draw(opts: DrawOptions): void {
+    const { ctx, width, height, transform, nodes, links, hoveredNode: hn, hoveredEdge: he, showLabels, filterText } = opts;
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.save();
+    ctx.translate(transform.x, transform.y);
+    ctx.scale(transform.k, transform.k);
+
+    const { highlightNodes, highlightEdges } = this.buildHighlightSets(hn, he, links);
+    const isHighlightMode = highlightNodes.size > 0;
+    const concealedNodes = this.buildConcealedSet(nodes, filterText);
+
+    this.drawLinks(ctx, links, concealedNodes, highlightEdges, isHighlightMode, he);
+    this.drawNodes(ctx, nodes, concealedNodes, highlightNodes, isHighlightMode, hn, showLabels);
+
+    ctx.restore();
+  }
+
+  getNodeColor(type: string): string {
+    switch (type) {
+      case 'Person': return '#ff7f0e';
+      case 'Place':  return '#2ca02c';
+      case 'Event':  return '#d62728';
+      case 'Thing':  return '#1f77b4';
+      default:       return '#9467bd';
+    }
+  }
+
+  private buildHighlightSets(
+    hn: SimulationNode | null,
+    he: SimulationLink | null,
+    links: SimulationLink[]
+  ): { highlightNodes: Set<SimulationNode>; highlightEdges: Set<SimulationLink> } {
+    const highlightNodes = new Set<SimulationNode>();
+    const highlightEdges = new Set<SimulationLink>();
+
+    if (hn) {
+      highlightNodes.add(hn);
+      for (const link of links) {
+        const s = link.source as unknown as SimulationNode;
+        const t = link.target as unknown as SimulationNode;
+        if (s === hn || t === hn) {
+          highlightEdges.add(link);
+          highlightNodes.add(s);
+          highlightNodes.add(t);
+        }
+      }
+    } else if (he) {
+      highlightEdges.add(he);
+      highlightNodes.add(he.source as unknown as SimulationNode);
+      highlightNodes.add(he.target as unknown as SimulationNode);
+    }
+
+    return { highlightNodes, highlightEdges };
+  }
+
+  private buildConcealedSet(nodes: SimulationNode[], filterText: string): Set<SimulationNode> {
+    if (!filterText) return new Set();
+    const filter = filterText.toLowerCase();
+    return new Set(nodes.filter(n => !this.matchesFilter(n, filter)));
+  }
+
+  private matchesFilter(node: SimulationNode, filter: string): boolean {
+    if (node.label.toLowerCase().includes(filter)) return true;
+    if (node.type.toLowerCase().includes(filter)) return true;
+    if (node.description?.toLowerCase().includes(filter)) return true;
+    return Object.values(node.attributes ?? {}).some(
+      v => v !== null && v !== undefined && String(v).toLowerCase().includes(filter)
+    );
+  }
+
+  private drawLinks(
+    ctx: CanvasRenderingContext2D,
+    links: SimulationLink[],
+    concealedNodes: Set<SimulationNode>,
+    highlightEdges: Set<SimulationLink>,
+    isHighlightMode: boolean,
+    hoveredEdge: SimulationLink | null
+  ): void {
+    ctx.lineCap = 'round';
+    for (const link of links) {
+      const source = link.source as unknown as SimulationNode;
+      const target = link.target as unknown as SimulationNode;
+      if (concealedNodes.has(source) || concealedNodes.has(target)) continue;
+      if (source.x === undefined || source.y === undefined || target.x === undefined || target.y === undefined) continue;
+
+      const isHighlighted = highlightEdges.has(link);
+      ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.1 : 1.0;
+      ctx.beginPath();
+      ctx.moveTo(source.x, source.y);
+      ctx.lineTo(target.x, target.y);
+
+      if (hoveredEdge === link) {
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 4;
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 4;
+      } else {
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+      }
+      ctx.stroke();
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1.0;
+    }
+  }
+
+  private drawNodes(
+    ctx: CanvasRenderingContext2D,
+    nodes: SimulationNode[],
+    concealedNodes: Set<SimulationNode>,
+    highlightNodes: Set<SimulationNode>,
+    isHighlightMode: boolean,
+    hoveredNode: SimulationNode | null,
+    showLabels: boolean
+  ): void {
+    for (const node of nodes) {
+      if (node.x === undefined || node.y === undefined) continue;
+      if (concealedNodes.has(node)) continue;
+
+      const isHovered = hoveredNode === node;
+      const isHighlighted = highlightNodes.has(node);
+      ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.1 : 1.0;
+
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
+
+      if (isHovered) {
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = d3.color(this.getNodeColor(node.type))?.brighter(0.5).toString() ?? this.getNodeColor(node.type);
+      } else {
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = this.getNodeColor(node.type);
+      }
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.stroke();
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1.0;
+
+      if (showLabels || isHighlighted) {
+        ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.1 : 1.0;
+        ctx.fillStyle = '#000';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(node.label, node.x, node.y + 35);
+        ctx.globalAlpha = 1.0;
+      }
+    }
+  }
+}

@@ -43,17 +43,13 @@
   }
 
   @if (hoveredEdge(); as edge) {
-    <!-- We can cast source/target to any to access the node properties since D3 replaces them with objects -->
-    @let sourceNode = $any(edge.source);
-    @let targetNode = $any(edge.target);
-
     <div class="edge-tooltip" [style.left.px]="mousePosition.x + 15" [style.top.px]="mousePosition.y + 15">
       <div class="relationship">
-         <span class="node-name">{{ sourceNode.label }}</span>
+         <span class="node-name">{{ edgeSource(edge).label }}</span>
          <span class="arrow">→</span>
          <span class="predicate">{{ edge.predicate }}</span>
          <span class="arrow">→</span>
-         <span class="node-name">{{ targetNode.label }}</span>
+         <span class="node-name">{{ edgeTarget(edge).label }}</span>
       </div>
     </div>
   }
