@@ -198,6 +198,13 @@ export const TapestryStore = signalStore(
           selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
         }));
       },
+      addEdge(edge: Omit<TapestryEdge, 'id'>) {
+        patchState(store, state => ({
+          undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),
+          redoStack: [],
+          edges: [...state.edges, { ...edge, id: crypto.randomUUID() }],
+        }));
+      },
       deleteEdge(edgeId: string) {
         patchState(store, state => ({
           undoStack: [...state.undoStack, { nodes: state.nodes, edges: state.edges }].slice(-50),

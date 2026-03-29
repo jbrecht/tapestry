@@ -106,6 +106,8 @@ export class NodeDetailPanelComponent {
     effect(() => {
       this.store.selectedNodeId();
       this.geocodeStatus.set('idle');
+      this.addingConnection.set(false);
+      this.newConnDirection.set('out');
     });
   }
 
@@ -136,6 +138,29 @@ export class NodeDetailPanelComponent {
   }
 
   // ── General ────────────────────────────────────────────────────────────────
+
+  protected otherNodes = computed(() => {
+    const id = this.store.selectedNodeId();
+    return this.store.nodes()
+      .filter(n => n.id !== id)
+      .sort((a, b) => a.label.localeCompare(b.label));
+  });
+
+  protected addingConnection = signal(false);
+  protected newConnDirection = signal<'out' | 'in'>('out');
+
+  protected submitConnection(targetNodeId: string, predicate: string) {
+    const node = this.selectedNode();
+    if (!node || !targetNodeId || !predicate.trim()) return;
+    const normalised = predicate.trim().toUpperCase().replace(/\s+/g, '_');
+    this.store.addEdge(
+      this.newConnDirection() === 'out'
+        ? { sourceId: node.id, targetId: targetNodeId, predicate: normalised }
+        : { sourceId: targetNodeId, targetId: node.id, predicate: normalised }
+    );
+    this.addingConnection.set(false);
+    this.newConnDirection.set('out');
+  }
 
   protected confirmingDelete = signal(false);
   protected confirmingDeleteEdgeId = signal<string | null>(null);

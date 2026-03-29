@@ -106,34 +106,56 @@
         }
       </div>
 
-    @if (connections().length > 0) {
-      <div class="section connections-section">
-        <div class="section-title">Connections ({{ connections().length }})</div>
-        @for (conn of connections(); track conn.edgeId) {
-          @if (confirmingDeleteEdgeId() === conn.edgeId) {
-            <div class="confirm-row">
-              <span class="confirm-text">Remove "{{ conn.predicate }}"?</span>
-              <button class="confirm-yes" (click)="deleteEdge(conn.edgeId)">Remove</button>
-              <button class="confirm-no" (click)="confirmingDeleteEdgeId.set(null)">Cancel</button>
-            </div>
-          } @else {
-            <div class="connection-row">
-              <button class="conn-navigate" (click)="selectConnection(conn.nodeId)">
-                <span class="conn-arrow" [class.outgoing]="conn.direction === 'out'">
-                  {{ conn.direction === 'out' ? '→' : '←' }}
-                </span>
-                <div class="conn-body">
-                  <span class="conn-label">{{ conn.nodeLabel }}</span>
-                  <span class="conn-predicate">{{ conn.predicate }}</span>
-                </div>
-                <span class="conn-type type-{{ conn.nodeType.toLowerCase() }}">{{ conn.nodeType }}</span>
-              </button>
-              <button class="edge-delete-btn" (click)="confirmingDeleteEdgeId.set(conn.edgeId)" aria-label="Delete edge">✕</button>
-            </div>
-          }
-        }
+    <div class="section connections-section">
+      <div class="section-title-row">
+        <span class="section-title">Connections ({{ connections().length }})</span>
+        <button class="add-conn-btn" (click)="addingConnection.set(!addingConnection())" [class.active]="addingConnection()" title="Add connection">+</button>
       </div>
-    }
+
+      @if (addingConnection()) {
+        <div class="add-conn-form">
+          <div class="conn-direction-toggle">
+            <button [class.active]="newConnDirection() === 'out'" (click)="newConnDirection.set('out')">→ outgoing</button>
+            <button [class.active]="newConnDirection() === 'in'"  (click)="newConnDirection.set('in')">← incoming</button>
+          </div>
+          <select #connTarget class="conn-select">
+            <option value="">Select node…</option>
+            @for (n of otherNodes(); track n.id) {
+              <option [value]="n.id">{{ n.label }} ({{ n.type }})</option>
+            }
+          </select>
+          <input #connPredicate class="conn-predicate-input" placeholder="Relationship (e.g. LOCATED_IN)" (keydown.enter)="submitConnection(connTarget.value, connPredicate.value)" />
+          <div class="conn-form-actions">
+            <button class="confirm-no"  (click)="addingConnection.set(false)">Cancel</button>
+            <button class="confirm-yes" (click)="submitConnection(connTarget.value, connPredicate.value)">Add</button>
+          </div>
+        </div>
+      }
+
+      @for (conn of connections(); track conn.edgeId) {
+        @if (confirmingDeleteEdgeId() === conn.edgeId) {
+          <div class="confirm-row">
+            <span class="confirm-text">Remove "{{ conn.predicate }}"?</span>
+            <button class="confirm-yes" (click)="deleteEdge(conn.edgeId)">Remove</button>
+            <button class="confirm-no" (click)="confirmingDeleteEdgeId.set(null)">Cancel</button>
+          </div>
+        } @else {
+          <div class="connection-row">
+            <button class="conn-navigate" (click)="selectConnection(conn.nodeId)">
+              <span class="conn-arrow" [class.outgoing]="conn.direction === 'out'">
+                {{ conn.direction === 'out' ? '→' : '←' }}
+              </span>
+              <div class="conn-body">
+                <span class="conn-label">{{ conn.nodeLabel }}</span>
+                <span class="conn-predicate">{{ conn.predicate }}</span>
+              </div>
+              <span class="conn-type type-{{ conn.nodeType.toLowerCase() }}">{{ conn.nodeType }}</span>
+            </button>
+            <button class="edge-delete-btn" (click)="confirmingDeleteEdgeId.set(conn.edgeId)" aria-label="Delete edge">✕</button>
+          </div>
+        }
+      }
+    </div>
 
     <div class="delete-section">
       @if (confirmingDelete()) {

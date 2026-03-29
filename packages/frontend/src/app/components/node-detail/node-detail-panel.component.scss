@@ -318,6 +318,82 @@
 
 // ── Connections ───────────────────────────────────────────────────────────────
 
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+
+  .section-title { margin-bottom: 0; }
+}
+
+.add-conn-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover, &.active { background: #f5a623; border-color: #f5a623; color: #fff; }
+}
+
+.add-conn-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.conn-direction-toggle {
+  display: flex;
+  gap: 4px;
+
+  button {
+    flex: 1;
+    padding: 4px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: transparent;
+    font-size: 12px;
+    color: #666;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    &.active { background: #f5a623; border-color: #f5a623; color: #fff; }
+    &:not(.active):hover { background: #f5f5f5; }
+  }
+}
+
+.conn-select, .conn-predicate-input {
+  width: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  &:focus { border-color: #f5a623; }
+}
+
+.conn-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .connections-section {
   flex: 1;
 }
