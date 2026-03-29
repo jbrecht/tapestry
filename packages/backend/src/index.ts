@@ -16,8 +16,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // 1. Middleware
-// Replace 'http://localhost:4200' with your Railway frontend URL later
-app.use(cors()); 
+const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:4200';
+app.use(cors({ origin: allowedOrigin }));
 app.use(express.json());
 
 // Routes
