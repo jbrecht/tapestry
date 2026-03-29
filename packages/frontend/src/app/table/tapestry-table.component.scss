@@ -51,6 +51,18 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     white-space: nowrap;
+
+    &.sortable {
+      cursor: pointer;
+      user-select: none;
+      &:hover { color: #222; }
+    }
+  }
+
+  .sort-icon {
+    margin-left: 4px;
+    opacity: 0.4;
+    font-style: normal;
   }
 
   td {
@@ -135,7 +147,7 @@
 .detail-wrap {
   display: flex;
   gap: 32px;
-  padding: 12px 20px 14px 44px;
+  padding: 12px 20px 14px 52px;
 }
 
 .detail-section {

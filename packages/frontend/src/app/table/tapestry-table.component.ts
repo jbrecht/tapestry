@@ -25,11 +25,34 @@ export class TapestryTableComponent {
 
   private expandedIds = signal<Set<string>>(new Set());
 
+  protected sortField = signal<'label' | 'type' | null>(null);
+  protected sortDir = signal<'asc' | 'desc'>('asc');
+
   protected filteredNodes = computed(() => {
     const filter = this.store.filterText().toLowerCase();
-    const nodes = this.store.nodes();
-    return filter ? nodes.filter(n => matchesFilter(n, filter)) : nodes;
+    const field = this.sortField();
+    const dir = this.sortDir();
+
+    let nodes = this.store.nodes();
+    if (filter) nodes = nodes.filter(n => matchesFilter(n, filter));
+    if (field) {
+      nodes = [...nodes].sort((a, b) => {
+        const av = a[field].toLowerCase();
+        const bv = b[field].toLowerCase();
+        return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+    }
+    return nodes;
   });
+
+  protected sortBy(field: 'label' | 'type') {
+    if (this.sortField() === field) {
+      this.sortDir.update(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortField.set(field);
+      this.sortDir.set('asc');
+    }
+  }
 
   protected visibleAttrs(node: TapestryNode) {
     return Object.entries(node.attributes)

@@ -12,8 +12,14 @@
       <thead>
         <tr>
           <th class="col-expand"></th>
-          <th class="col-label">Label</th>
-          <th class="col-type">Type</th>
+          <th class="col-label sortable" (click)="sortBy('label')">
+            Label
+            <span class="sort-icon">{{ sortField() === 'label' ? (sortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+          </th>
+          <th class="col-type sortable" (click)="sortBy('type')">
+            Type
+            <span class="sort-icon">{{ sortField() === 'type' ? (sortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+          </th>
           <th class="col-desc">Description</th>
         </tr>
       </thead>
