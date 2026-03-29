@@ -37,7 +37,7 @@ function makeIcon(color: string, selected: boolean): L.DivIcon {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TapestryMapComponent implements AfterViewInit, OnDestroy {
-  private store = inject(TapestryStore);
+  protected store = inject(TapestryStore);
   private mapRef = viewChild<ElementRef<HTMLDivElement>>('mapContainer');
 
   private map: L.Map | null = null;
