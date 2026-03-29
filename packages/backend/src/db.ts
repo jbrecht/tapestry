@@ -72,7 +72,10 @@ const initSchema = () => {
   } catch (err: any) { /* column already exists */ }
 
   try {
-    db.exec("ALTER TABLE projects ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;");
+    // Note: SQLite does not allow CURRENT_TIMESTAMP as a default in ALTER TABLE,
+    // so we add the column as nullable and backfill from updated_at.
+    db.exec("ALTER TABLE projects ADD COLUMN created_at DATETIME;");
+    db.exec("UPDATE projects SET created_at = updated_at WHERE created_at IS NULL;");
     console.log('Migrated projects table to include created_at column.');
   } catch (err: any) { /* column already exists */ }
 
