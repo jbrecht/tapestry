@@ -12,7 +12,7 @@ router.use(authenticateToken);
 router.get('/', (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
-    const stmt = db.prepare('SELECT id, name, updated_at FROM projects WHERE user_id = ? ORDER BY updated_at DESC');
+    const stmt = db.prepare('SELECT id, name, description, created_at, updated_at FROM projects WHERE user_id = ? ORDER BY updated_at DESC');
     const projects = stmt.all(userId);
     res.json(projects);
   } catch (error) {
@@ -101,7 +101,7 @@ router.get('/:id', (req: AuthRequest, res) => {
 router.put('/:id', (req: AuthRequest, res) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { name, data } = req.body;
+  const { name, data, description } = req.body;
 
   try {
     // Check if project exists and belongs to user
@@ -119,6 +119,11 @@ router.put('/:id', (req: AuthRequest, res) => {
     if (name) {
       updates.push('name = ?');
       values.push(name);
+    }
+
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description);
     }
 
     if (data) {

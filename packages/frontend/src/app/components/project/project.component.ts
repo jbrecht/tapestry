@@ -9,6 +9,7 @@ import { TapestryStore } from '../../store/tapestry.store';
 import { MatDialog } from '@angular/material/dialog';
 import { ProjectDeleteDialogComponent } from './project-delete-dialog.component';
 import { ProjectCreateDialogComponent } from './project-create-dialog.component';
+import { ProjectEditDialogComponent, ProjectEditDialogData } from './project-edit-dialog.component';
 
 @Component({
   selector: 'app-project',
@@ -17,7 +18,8 @@ import { ProjectCreateDialogComponent } from './project-create-dialog.component'
     MatMenuModule,
     MatIconModule,
     MatButtonModule,
-    MatDividerModule
+    MatDividerModule,
+    ProjectEditDialogComponent
 ],
   templateUrl: './project.component.html',
   styleUrl: './project.component.scss'
@@ -42,6 +44,27 @@ export class ProjectComponent {
     if (id && id !== this.store.projectId()) {
       this.store.switchProject(id);
     }
+  }
+
+  openEditDialog() {
+    const dialogRef = this.dialog.open(ProjectEditDialogComponent, {
+      width: '440px',
+      data: {
+        name: this.store.projectName(),
+        description: this.store.projectDescription(),
+        createdAt: this.store.projectCreatedAt(),
+        updatedAt: this.store.projectUpdatedAt(),
+        nodeCount: this.store.nodes().length,
+        edgeCount: this.store.edges().length,
+        messageCount: this.store.messages().length,
+      } satisfies ProjectEditDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((result: { name: string; description: string } | undefined) => {
+      if (result) {
+        this.store.updateProjectMeta(result.name, result.description);
+      }
+    });
   }
 
   onDeleteProject() {

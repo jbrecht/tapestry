@@ -6,6 +6,8 @@ import { AuthService } from './auth.service';
 export interface Project {
   id: string;
   name: string;
+  description: string;
+  created_at: string;
   updated_at: string;
   data?: any;
   nodes?: any[];
@@ -42,8 +44,8 @@ export class ProjectService {
     return this.http.get<Project>(`${this.apiUrl}/${id}`, { headers: this.getHeaders() });
   }
 
-  updateProject(id: string, name: string | undefined, data: any): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${id}`, { name, data }, { headers: this.getHeaders() });
+  updateProject(id: string, name: string | undefined, data: any, description?: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${id}`, { name, data, description }, { headers: this.getHeaders() });
   }
 
   deleteProject(id: string): Observable<any> {

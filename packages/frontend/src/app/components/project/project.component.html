@@ -9,6 +9,10 @@
     <mat-icon>add</mat-icon>
     <span>New Project...</span>
   </button>
+  <button mat-menu-item (click)="openEditDialog()" [disabled]="!store.projectId()">
+    <mat-icon>edit</mat-icon>
+    <span>Edit Project…</span>
+  </button>
 
   <mat-divider />
 

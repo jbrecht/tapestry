@@ -66,6 +66,16 @@ const initSchema = () => {
     // If it throws, it means the column already exists, which is fine!
   }
 
+  try {
+    db.exec("ALTER TABLE projects ADD COLUMN description TEXT NOT NULL DEFAULT '';");
+    console.log('Migrated projects table to include description column.');
+  } catch (err: any) { /* column already exists */ }
+
+  try {
+    db.exec("ALTER TABLE projects ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;");
+    console.log('Migrated projects table to include created_at column.');
+  } catch (err: any) { /* column already exists */ }
+
   // Migrate messages out of `projects.data` JSON into the `messages` table
   const messagesTableCheck = db.prepare("SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name='messages'").get() as { count: number };
   if (messagesTableCheck.count > 0) {

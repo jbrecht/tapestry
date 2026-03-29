@@ -40,6 +40,9 @@ export interface ChatMessage {
 export interface TapestryState {
   projectId: string | null;
   projectName: string;
+  projectDescription: string;
+  projectCreatedAt: string | null;
+  projectUpdatedAt: string | null;
   projectList: Project[];
   nodes: TapestryNode[];
   edges: TapestryEdge[];
@@ -59,6 +62,9 @@ export interface TapestryState {
 const initialState: TapestryState = {
   projectId: null,
   projectName: 'No Project Selected',
+  projectDescription: '',
+  projectCreatedAt: null,
+  projectUpdatedAt: null,
   projectList: [],
   nodes: [],
   edges: [],
@@ -217,10 +223,10 @@ export const TapestryStore = signalStore(
       },
       
       // Single Project CRUD - Save
-      saveProject: rxMethod<{ id: string, name: string, data: any }>(
+      saveProject: rxMethod<{ id: string, name: string, description: string, data: any }>(
         pipe(
           tap(() => patchState(store, { isSaving: true })),
-          switchMap(({ id, name, data }) => projectService.updateProject(id, name, data).pipe(
+          switchMap(({ id, name, description, data }) => projectService.updateProject(id, name, data, description).pipe(
              tap(() => patchState(store, { isSaving: false })),
              catchError((err) => {
                  console.error('Auto-save failed', err);
@@ -231,6 +237,10 @@ export const TapestryStore = signalStore(
         )
       ),
 
+      updateProjectMeta(name: string, description: string) {
+        patchState(store, { projectName: name, projectDescription: description });
+      },
+
       loadProject: rxMethod<string>(
         pipe(
           tap(() => patchState(store, { isLoading: true })),
@@ -240,6 +250,9 @@ export const TapestryStore = signalStore(
               patchState(store, {
                 projectId: project.id,
                 projectName: project.name,
+                projectDescription: project.description || '',
+                projectCreatedAt: project.created_at || null,
+                projectUpdatedAt: project.updated_at || null,
                 nodes: data.nodes || project.nodes || [],
                 edges: data.edges || project.edges || [],
                 messages: data.messages || project.messages || [],
@@ -269,6 +282,9 @@ export const TapestryStore = signalStore(
                 ...(state.projectId === id ? {
                   projectId: null,
                   projectName: 'No Project Selected',
+                  projectDescription: '',
+                  projectCreatedAt: null,
+                  projectUpdatedAt: null,
                   nodes: [],
                   edges: [],
                   messages: []
@@ -337,6 +353,9 @@ export const TapestryStore = signalStore(
               patchState(store, {
                 projectId: project.id,
                 projectName: project.name,
+                projectDescription: '',
+                projectCreatedAt: project.updated_at || null,
+                projectUpdatedAt: project.updated_at || null,
                 nodes: [],
                 edges: [],
                 messages: [],
@@ -379,6 +398,9 @@ export const TapestryStore = signalStore(
             patchState(store, {
                 projectId: null,
                 projectName: 'No Project Selected',
+                projectDescription: '',
+                projectCreatedAt: null,
+                projectUpdatedAt: null,
                 projectList: [],
                 nodes: [],
                 edges: [],
@@ -402,6 +424,7 @@ export const TapestryStore = signalStore(
       const saveState = computed(() => ({
         id: store.projectId(),
         name: store.projectName(),
+        description: store.projectDescription(),
         data: {
           nodes: store.nodes(),
           edges: store.edges(),
@@ -411,10 +434,10 @@ export const TapestryStore = signalStore(
       }));
 
       // Use rxMethod to pipe this signal through debounce and filter
-      rxMethod<{ id: string | null, name: string, data: any }>(
+      rxMethod<{ id: string | null, name: string, description: string, data: any }>(
         pipe(
           debounceTime(2000), // Wait for 2 seconds of inactivity
-          filter((state): state is { id: string, name: string, data: any } => !!state.id), // Only save if we have a project ID
+          filter((state): state is { id: string, name: string, description: string, data: any } => !!state.id), // Only save if we have a project ID
           tap((state) => {
             console.log('[TapestryStore] Auto-saving project...', state.id);
             store.saveProject(state);
