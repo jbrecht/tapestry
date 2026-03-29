@@ -141,7 +141,7 @@
 
 .attr-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
   margin-bottom: 6px;
 
@@ -168,6 +168,20 @@
 
   &:focus {
     border-bottom-color: #f5a623;
+  }
+}
+
+.attr-textarea {
+  resize: vertical;
+  border-bottom: none;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  padding: 4px 6px;
+  line-height: 1.4;
+  font-family: inherit;
+
+  &:focus {
+    border-color: #f5a623;
   }
 }
 

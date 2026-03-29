@@ -18,7 +18,8 @@ export class PerspectiveSwitcherComponent {
   perspectives = [
     { id: 'abstract', label: '🕸️ Graph' },
     { id: 'map', label: '🗺️ Map' },
-    { id: 'timeline', label: '⏳ Timeline' }
+    { id: 'timeline', label: '⏳ Timeline' },
+    { id: 'table', label: '📋 Table' },
   ];
 
   setPerspective(id: any) {

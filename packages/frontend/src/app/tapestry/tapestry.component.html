@@ -58,6 +58,8 @@
       <app-tapestry-timeline />
     } @else if (store.activePerspective() === 'map') {
       <app-tapestry-map />
+    } @else if (store.activePerspective() === 'table') {
+      <app-tapestry-table />
     } @else {
       <div style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; color: #666;">
         <h2>The {{ store.activePerspective() }} view is under construction.</h2>

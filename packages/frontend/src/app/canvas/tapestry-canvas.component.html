@@ -26,9 +26,9 @@
       @if (node.attributes && (node.attributes | keyvalue).length > 0) {
         <div class="node-attributes">
           @for (attr of node.attributes | keyvalue; track attr.key) {
-             @if (attr.key !== 'coordinates' && attr.key !== 'color') {
+             @if (attr.key !== 'coordinates' && attr.key !== 'color' && !attr.key.startsWith('_')) {
                 <div class="attribute-row">
-                  <span class="attr-key">{{ attr.key }}:</span>
+                  <span class="attr-key">{{ attrLabel(attr.key) }}:</span>
                   <span class="attr-value">{{ attr.value }}</span>
                 </div>
              }

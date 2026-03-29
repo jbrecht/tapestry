@@ -32,12 +32,21 @@
         @for (attr of visibleAttributes(); track attr.key) {
           <div class="attr-row">
             <span class="attr-key">{{ attr.label }}</span>
-            <input
-              class="attr-value"
-              [value]="attr.value"
-              (blur)="updateAttribute(attr.key, $event)"
-              (keydown.enter)="$any($event.target).blur()"
-            />
+            @if (attr.key === 'extraInfo') {
+              <textarea
+                class="attr-value attr-textarea"
+                [value]="attr.value"
+                (blur)="updateAttribute(attr.key, $event)"
+                rows="3"
+              ></textarea>
+            } @else {
+              <input
+                class="attr-value"
+                [value]="attr.value"
+                (blur)="updateAttribute(attr.key, $event)"
+                (keydown.enter)="$any($event.target).blur()"
+              />
+            }
           </div>
         }
       </div>

@@ -1,0 +1,81 @@
+@if (filteredNodes().length === 0) {
+  <div class="empty-state">
+    @if (store.filterText()) {
+      <p>No nodes match "{{ store.filterText() }}".</p>
+    } @else {
+      <p>No nodes yet. Start a conversation to extract entities.</p>
+    }
+  </div>
+} @else {
+  <div class="table-wrap">
+    <table class="node-table">
+      <thead>
+        <tr>
+          <th class="col-expand"></th>
+          <th class="col-label">Label</th>
+          <th class="col-type">Type</th>
+          <th class="col-desc">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (node of filteredNodes(); track node.id) {
+          <tr class="node-row" [class.expanded]="isExpanded(node.id)" [class.selected]="store.selectedNodeId() === node.id" (click)="selectNode(node.id)">
+            <td class="col-expand">
+              <button class="expand-btn" (click)="toggle(node.id); $event.stopPropagation()" [class.open]="isExpanded(node.id)" aria-label="Expand row">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="12" height="12">
+                  <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </td>
+            <td class="col-label">{{ node.label }}</td>
+            <td class="col-type"><span class="type-badge type-{{ node.type.toLowerCase() }}">{{ node.type }}</span></td>
+            <td class="col-desc">{{ node.description }}</td>
+          </tr>
+          @if (isExpanded(node.id)) {
+            <tr class="detail-row">
+              <td colspan="4">
+                <div class="detail-wrap">
+                  @if (visibleAttrs(node).length > 0) {
+                    <div class="detail-section">
+                      <div class="detail-heading">Attributes</div>
+                      <dl class="attr-list">
+                        @for (entry of visibleAttrs(node); track entry.label) {
+                          <dt>{{ entry.label }}</dt>
+                          <dd>{{ entry.value }}</dd>
+                        }
+                      </dl>
+                    </div>
+                  }
+                  @if (connectionsFor(node).length > 0) {
+                    <div class="detail-section">
+                      <div class="detail-heading">Connections</div>
+                      <ul class="conn-list">
+                        @for (conn of connectionsFor(node); track conn.edgeId) {
+                          <li>
+                            @if (conn.direction === 'out') {
+                              <span class="conn-self">{{ node.label }}</span>
+                              <span class="conn-pred">{{ conn.predicate }}</span>
+                              <button class="conn-node-btn" (click)="selectNode(conn.otherId); $event.stopPropagation()">{{ conn.otherLabel }}</button>
+                            } @else {
+                              <button class="conn-node-btn" (click)="selectNode(conn.otherId); $event.stopPropagation()">{{ conn.otherLabel }}</button>
+                              <span class="conn-pred">{{ conn.predicate }}</span>
+                              <span class="conn-self">{{ node.label }}</span>
+                            }
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                  @if (visibleAttrs(node).length === 0 && connectionsFor(node).length === 0) {
+                    <div class="detail-empty">No additional data.</div>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+    <div class="row-count">{{ filteredNodes().length }} node{{ filteredNodes().length === 1 ? '' : 's' }}</div>
+  </div>
+}

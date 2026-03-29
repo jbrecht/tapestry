@@ -7,7 +7,7 @@ import { ProjectService, Project } from '../services/project.service';
 import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';
 
-export type PerspectiveType = 'abstract' | 'map' | 'timeline' | 'family-tree' | 'ledger';
+export type PerspectiveType = 'abstract' | 'map' | 'timeline' | 'table' | 'family-tree' | 'ledger';
 
 export interface TapestryNode {
   id: string;

@@ -1,6 +1,7 @@
 import { Component, inject, ChangeDetectionStrategy, viewChild, ElementRef, effect, OnDestroy, AfterViewInit, signal } from '@angular/core';
 import { KeyValuePipe } from '@angular/common';
 import { TapestryNode, TapestryEdge, TapestryStore, PerspectiveType } from '../store/tapestry.store';
+import { attrLabel } from '../utils/attr-label';
 import * as d3 from 'd3';
 import { GraphSimulationService, SimulationNode, SimulationLink } from './graph-simulation.service';
 import { CanvasRendererService } from './canvas-renderer.service';
@@ -39,6 +40,8 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
   protected edgeGroupTarget(group: SimulationLink[]): SimulationNode {
     return group[0].target as unknown as SimulationNode;
   }
+
+  protected attrLabel = attrLabel;
 
   constructor() {
     effect(() => {

@@ -1,5 +1,6 @@
 import { Component, inject, computed, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TapestryStore } from '../../store/tapestry.store';
+import { attrLabel } from '../../utils/attr-label';
 
 interface Connection {
   edgeId: string;
@@ -15,13 +16,6 @@ interface AttrEntry {
   label: string;
   value: string;
 }
-
-const ATTR_LABELS: Record<string, string> = {
-  startTime: 'Start',
-  endTime: 'End',
-  locationType: 'Location type',
-  extraInfo: 'Notes',
-};
 
 const SKIP_ATTRS = new Set(['coordinates']);
 
@@ -50,7 +44,7 @@ export class NodeDetailPanelComponent {
       )
       .map(([key, value]) => ({
         key,
-        label: ATTR_LABELS[key] ?? key,
+        label: attrLabel(key),
         value: String(value),
       }));
   });

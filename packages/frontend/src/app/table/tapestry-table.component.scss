@@ -1,0 +1,236 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  font-size: 14px;
+}
+
+// ── Table wrapper ─────────────────────────────────────────────────────────────
+
+.table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.node-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+
+  thead tr {
+    background: #f5f5f5;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  th {
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #555;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 8px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+// ── Column widths ─────────────────────────────────────────────────────────────
+
+.col-expand { width: 32px; padding-left: 8px; padding-right: 0; }
+.col-label  { width: 200px; font-weight: 500; color: #222; }
+.col-type   { width: 100px; }
+.col-desc   { color: #555; }
+
+// ── Node rows ─────────────────────────────────────────────────────────────────
+
+.node-row {
+  cursor: pointer;
+  transition: background 0.1s;
+
+  &:hover { background: #f9f9f9; }
+
+  &.selected {
+    background: #fff8ec;
+    .col-label { color: #e07b00; }
+  }
+}
+
+// ── Expand button ─────────────────────────────────────────────────────────────
+
+.expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #aaa;
+  border-radius: 4px;
+  transition: transform 0.15s, color 0.15s;
+
+  &:hover { color: #555; }
+
+  &.open {
+    transform: rotate(90deg);
+    color: #555;
+  }
+}
+
+// ── Type badges ───────────────────────────────────────────────────────────────
+
+.type-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #fff;
+
+  &.type-person  { background: #ff7f0e; }
+  &.type-place   { background: #2ca02c; }
+  &.type-event   { background: #d62728; }
+  &.type-thing   { background: #1f77b4; }
+}
+
+// ── Detail row ────────────────────────────────────────────────────────────────
+
+.detail-row td {
+  padding: 0;
+  background: #f8f8f8;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.detail-wrap {
+  display: flex;
+  gap: 32px;
+  padding: 12px 20px 14px 44px;
+}
+
+.detail-section {
+  min-width: 180px;
+}
+
+.detail-heading {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #999;
+  margin-bottom: 6px;
+}
+
+.detail-empty {
+  font-size: 12px;
+  color: #bbb;
+  padding: 4px 0;
+}
+
+// ── Attribute list ────────────────────────────────────────────────────────────
+
+.attr-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 3px;
+  margin: 0;
+  font-size: 12px;
+
+  dt {
+    color: #888;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  dd {
+    margin: 0;
+    color: #333;
+  }
+}
+
+// ── Connection list ───────────────────────────────────────────────────────────
+
+.conn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.conn-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.conn-self {
+  color: #555;
+  font-weight: 500;
+}
+
+.conn-pred {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #aaa;
+}
+
+.conn-node-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #1a73e8;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.15s;
+
+  &:hover { text-decoration-color: #1a73e8; }
+}
+
+// ── Row count ─────────────────────────────────────────────────────────────────
+
+.row-count {
+  font-size: 11px;
+  color: #bbb;
+  text-align: right;
+  padding-right: 2px;
+}
