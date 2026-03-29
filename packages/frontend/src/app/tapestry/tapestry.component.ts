@@ -79,4 +79,30 @@ export class TapestryComponent implements OnDestroy {
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  importJson(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result as string);
+        const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+        const edges = Array.isArray(data.edges) ? data.edges : [];
+        if (nodes.length === 0 && edges.length === 0) return;
+
+        // Merge: existing IDs win; incoming nodes/edges with new IDs are added
+        const existingNodeIds = new Set(this.store.nodes().map((n: any) => n.id));
+        const existingEdgeIds = new Set(this.store.edges().map((e: any) => e.id));
+        const newNodes = [...this.store.nodes(), ...nodes.filter((n: any) => !existingNodeIds.has(n.id))];
+        const newEdges = [...this.store.edges(), ...edges.filter((e: any) => !existingEdgeIds.has(e.id))];
+        this.store.updateGraph(newNodes, newEdges);
+      } catch {
+        // silently ignore malformed files
+      }
+      // Reset so the same file can be re-imported if needed
+      (event.target as HTMLInputElement).value = '';
+    };
+    reader.readAsText(file);
+  }
 }

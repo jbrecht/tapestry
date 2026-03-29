@@ -60,6 +60,37 @@ app.post("/weave", async (req, res) => {
   }
 });
 
+// 4. Extract endpoint — document ingestion without chat history
+app.post("/extract", async (req, res) => {
+  try {
+    const { text, nodes, edges } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: "No text provided." });
+    }
+
+    const initialState = {
+      messages: [new HumanMessage(text)],
+      nodes: nodes || [],
+      edges: edges || [],
+    };
+
+    const result = await tapestryApp.invoke(initialState);
+
+    const prevIds = new Set((nodes || []).map((n: any) => n.id));
+    const addedNodes = result.nodes.filter((n: any) => !prevIds.has(n.id));
+    const addedEdges = result.edges.length - (edges || []).length;
+
+    res.json({
+      nodes: result.nodes,
+      edges: result.edges,
+      summary: `Added ${addedNodes.length} node${addedNodes.length !== 1 ? 's' : ''}, ${Math.max(0, addedEdges)} edge${addedEdges !== 1 ? 's' : ''}.`
+    });
+  } catch (error) {
+    console.error("Extract Error:", error);
+    res.status(500).json({ error: "Extraction failed. Check server logs." });
+  }
+});
+
 // 4. Start Server
 app.listen(PORT, () => {
   console.log(`🧶 Tapestry server spinning on port ${PORT}`);

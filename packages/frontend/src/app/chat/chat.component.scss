@@ -7,6 +7,104 @@
   background-color: var(--bg-secondary);
 }
 
+// ── Tab bar ───────────────────────────────────────────────────────────────────
+
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #888);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, border-bottom 0.15s;
+  border-bottom: 2px solid transparent;
+
+  &.active {
+    color: var(--accent-color, #f5a623);
+    border-bottom-color: var(--accent-color, #f5a623);
+  }
+
+  &:not(.active):hover {
+    color: var(--text-primary, #eee);
+  }
+}
+
+// ── Extract panel ─────────────────────────────────────────────────────────────
+
+.extract-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.extract-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  line-height: 1.5;
+}
+
+.extract-textarea {
+  flex: 1;
+  min-height: 200px;
+  background: var(--bg-tertiary, #2a2a3a);
+  color: var(--text-primary, #eee);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+
+  &:focus { border-color: var(--accent-color, #f5a623); }
+  &::placeholder { color: var(--text-secondary, #666); }
+  &:disabled { opacity: 0.5; }
+}
+
+.extract-btn {
+  padding: 10px;
+  background: var(--accent-color, #f5a623);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+
+  &:hover:not(:disabled) { background: #e09000; }
+  &:disabled { opacity: 0.5; cursor: default; }
+}
+
+.extract-feedback {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.extract-ok  { background: #2ca02c22; color: #2ca02c; }
+.extract-err { background: #d6272822; color: #d62728; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 .chat-container {
   display: flex;
   flex-direction: column;

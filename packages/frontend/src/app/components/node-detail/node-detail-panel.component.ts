@@ -1,4 +1,4 @@
-import { Component, inject, computed, signal, effect, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, computed, signal, effect, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { TapestryNode, TapestryStore } from '../../store/tapestry.store';
 import { attrLabel } from '../../utils/attr-label';
 
@@ -102,12 +102,23 @@ export class NodeDetailPanelComponent {
 
   protected geocodeStatus = signal<'idle' | 'loading' | 'success' | 'not-found'>('idle');
 
+  @ViewChild('labelInput') private labelInputRef?: ElementRef<HTMLInputElement>;
+
   constructor() {
     effect(() => {
       this.store.selectedNodeId();
       this.geocodeStatus.set('idle');
       this.addingConnection.set(false);
       this.newConnDirection.set('out');
+      this.confirmingDelete.set(false);
+      this.confirmingDeleteEdgeId.set(null);
+
+      if (this.selectedNode()?.attributes['_isDraft']) {
+        setTimeout(() => {
+          this.labelInputRef?.nativeElement.focus();
+          this.labelInputRef?.nativeElement.select();
+        });
+      }
     });
   }
 

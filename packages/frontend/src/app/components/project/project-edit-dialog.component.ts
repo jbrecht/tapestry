@@ -70,7 +70,7 @@ export interface ProjectEditDialogData {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      padding-top: 8px;
+      padding-top: 16px; /* room for outline field's floating label */
       min-width: 380px;
     }
     .full-width { width: 100%; }

@@ -11,6 +11,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { environment } from '../../environments/environment';
 import { patchState } from '@ngrx/signals';
 import { of } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 const NODE_COLORS: Record<string, string> = {
@@ -38,6 +39,35 @@ export class ChatComponent {
   protected store = inject(TapestryStore);
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
+
+  protected activeTab = signal<'chat' | 'extract'>('chat');
+
+  // ── Extract tab ────────────────────────────────────────────────────────────
+  protected extractText = signal('');
+  protected extractStatus = signal<'idle' | 'loading' | 'done' | 'error'>('idle');
+  protected extractSummary = signal('');
+
+  protected async onExtract() {
+    const text = this.extractText().trim();
+    if (!text || this.extractStatus() === 'loading') return;
+    this.extractStatus.set('loading');
+    this.extractSummary.set('');
+    try {
+      const result = await firstValueFrom(
+        this.http.post<{ nodes: any[]; edges: any[]; summary: string }>(
+          `${environment.apiUrl}/extract`,
+          { text, nodes: this.store.nodes(), edges: this.store.edges() }
+        )
+      );
+      this.store.updateGraph(result.nodes, result.edges);
+      this.extractSummary.set(result.summary);
+      this.extractStatus.set('done');
+      this.extractText.set('');
+    } catch {
+      this.extractSummary.set('Extraction failed — check server logs.');
+      this.extractStatus.set('error');
+    }
+  }
 
   protected inspectingIdx = signal<number | null>(null);
 
