@@ -1,26 +1,43 @@
-# Agent Instructions: Angular Best Practices
+# Agent Instructions: Tapestry Monorepo
 
-When working on this project (specifically the Angular frontend codebase), please strictly adhere to the following modern Angular practices and preferences.
+Tapestry is a monorepo managed with NPM Workspaces. Users build knowledge graphs through a conversational AI interface. Read this file before making any changes.
 
-## 1. State Management and Reactivity
+## Repo Structure
 
-- **Signals First:** General preference to use Angular Signals (`signal()`, `computed()`, `effect()`) for state management and reactivity whenever possible, moving away from RxJS `BehaviorSubject` or traditional component properties unless RxJS is strictly required for complex asynchronous streams.
+- `packages/frontend/` — Angular 21 SPA. See `packages/frontend/AGENTS.md` for frontend-specific rules.
+- `packages/backend/` — Node/Express API server. See `packages/backend/AGENTS.md` for backend-specific rules.
+- `packages/shared/` — Shared TypeScript types used by both packages. If a type is needed in both frontend and backend, it belongs here — do not duplicate it.
 
-## 2. Component APIs
+## Workspaces
 
-- **Signal Inputs:** Use the new Signal-based `input()` API instead of the traditional `@Input()` decorator.
-- **Output Function:** Use the new `output()` function instead of `@Output()` with `EventEmitter`.
-- **Signal Queries:** Use Signal-based queries like `viewChild()`, `viewChildren()`, `contentChild()`, and `contentChildren()` instead of `@ViewChild()`, `@ViewChildren()`, `@ContentChild()`, and `@ContentChildren()`.
+Install dependencies scoped to the correct package:
 
-## 3. Dependency Injection
+```bash
+npm install <package> -w @tapestry/backend
+npm install <package> -w @tapestry/frontend
+```
 
-- **`inject()` Function:** Always prefer using the `inject()` function for dependency injection over traditional constructor-based injection.
+Never install to the root unless it's a dev tool needed across all packages (e.g. `concurrently`).
 
-## 4. Templating
+## Running Locally
 
-- **Control Flow Syntax:** Always use the new built-in block-based control flow syntax (`@if`, `@else if`, `@else`, `@for`, `@switch`, `@case`, `@default`) rather than structural directives like `*ngIf`, `*ngFor`, or `*ngSwitch`.
-- **Self-Closing Tags:** Use self-closing tags for both standard HTML elements and Angular components that do not contain child content (e.g., use `<app-my-component />` rather than `<app-my-component></app-my-component>`).
+```bash
+npm install
+npm start  # starts both frontend (:4200) and backend (:3000)
+```
 
-## 5. Routing
+## Deployment
 
-- **Lazy-Loaded Routes:** Make use of lazy-loaded routes using the modern `loadComponent` or `loadChildren` syntax with `import()` to ensure optimal bundle sizes and performance.
+- **Frontend:** GitHub Pages via `npm run deploy:frontend`
+- **Backend:** Railway — auto-deploys on push to `master`. Build command: `npm run build:all`. Start command: `npm run start:backend`.
+
+## Environment Variables
+
+Backend requires `packages/backend/.env`. Required variables:
+
+- `OPENAI_API_KEY` — OpenAI API key
+- `JWT_SECRET` — random 32-byte hex string (generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
+- `FRONTEND_URL` — origin of the frontend, used for CORS (e.g. `https://yourusername.github.io`). No trailing slash, no path.
+- `PORT` — defaults to 3000
+- `DB_PATH` — path to SQLite database file (Railway: `/app/data/tapestry.db`)
+- `ADMIN_USERNAME` / `ADMIN_PASSWORD` — seeded admin account credentials

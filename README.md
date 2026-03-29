@@ -8,7 +8,25 @@ This monorepo is divided into three packages:
 
 - `packages/frontend/`: The Angular application (previously a standalone repo).
 - `packages/backend/`: The Node/Express API server.
-- `packages/shared/`: Shared TypeScript types, interfaces, and Zod schemas used by both the frontend and backend.
+- `packages/shared/`: Shared TypeScript types and interfaces used by both the frontend and backend.
+
+## Prerequisites
+
+- Node.js 20+
+- An [OpenAI API key](https://platform.openai.com/api-keys)
+
+## Environment Variables
+
+The backend requires a `.env` file at `packages/backend/.env`. Copy the structure below and fill in your values:
+
+```
+OPENAI_API_KEY=your_openai_api_key
+PORT=3000
+JWT_SECRET=                # generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+FRONTEND_URL=http://localhost:4200
+```
+
+For **Railway**, set these same variables in your service's environment variable settings. Set `FRONTEND_URL` to your GitHub Pages URL (e.g. `https://yourusername.github.io/tapestry`).
 
 ## Development
 
