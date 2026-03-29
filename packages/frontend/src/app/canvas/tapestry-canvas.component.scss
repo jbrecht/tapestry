@@ -141,30 +141,40 @@ canvas {
 .edge-tooltip {
   @extend %tooltip-base;
   max-width: none;
-  
-  .relationship {
+
+  .edge-header {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 6px;
     font-size: 12px;
     white-space: nowrap;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #eee;
 
     .node-name {
       font-weight: bold;
       color: #333;
     }
 
-    .predicate {
+    .arrow {
+      color: #999;
+    }
+  }
+
+  .predicates {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    .predicate-row {
+      font-family: monospace;
+      font-size: 12px;
+      color: #555;
       background: #f0f0f0;
       padding: 2px 6px;
       border-radius: 10px;
-      font-family: monospace;
-      color: #555;
-    }
-
-    .arrow {
-      color: #999;
+      white-space: nowrap;
     }
   }
 }

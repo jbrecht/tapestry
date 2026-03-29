@@ -42,14 +42,17 @@
     </div>
   }
 
-  @if (hoveredEdge(); as edge) {
+  @if (hoveredEdgeGroup(); as group) {
     <div class="edge-tooltip" [style.left.px]="mousePosition.x + 15" [style.top.px]="mousePosition.y + 15">
-      <div class="relationship">
-         <span class="node-name">{{ edgeSource(edge).label }}</span>
-         <span class="arrow">→</span>
-         <span class="predicate">{{ edge.predicate }}</span>
-         <span class="arrow">→</span>
-         <span class="node-name">{{ edgeTarget(edge).label }}</span>
+      <div class="edge-header">
+        <span class="node-name">{{ edgeGroupSource(group).label }}</span>
+        <span class="arrow">→</span>
+        <span class="node-name">{{ edgeGroupTarget(group).label }}</span>
+      </div>
+      <div class="predicates">
+        @for (edge of group; track edge.id) {
+          <div class="predicate-row">{{ edge.predicate }}</div>
+        }
       </div>
     </div>
   }

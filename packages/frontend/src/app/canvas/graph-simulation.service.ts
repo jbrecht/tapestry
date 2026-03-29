@@ -74,15 +74,16 @@ export class GraphSimulationService {
     });
   }
 
-  findEdgeAt(worldX: number, worldY: number): SimulationLink | undefined {
-    return (this.sim?.force<d3.ForceLink<SimulationNode, SimulationLink>>('link'))
-      ?.links()
-      .find(l => {
-        const source = l.source as unknown as SimulationNode;
-        const target = l.target as unknown as SimulationNode;
-        if (source.x === undefined || source.y === undefined || target.x === undefined || target.y === undefined) return false;
-        return isPointNearLine(worldX, worldY, source.x, source.y, target.x, target.y, EDGE_HIT_TOLERANCE);
-      });
+  findEdgesAt(worldX: number, worldY: number): SimulationLink[] {
+    const allLinks = (this.sim?.force<d3.ForceLink<SimulationNode, SimulationLink>>('link'))?.links() ?? [];
+    const hit = allLinks.find(l => {
+      const source = l.source as unknown as SimulationNode;
+      const target = l.target as unknown as SimulationNode;
+      if (source.x === undefined || source.y === undefined || target.x === undefined || target.y === undefined) return false;
+      return isPointNearLine(worldX, worldY, source.x, source.y, target.x, target.y, EDGE_HIT_TOLERANCE);
+    });
+    if (!hit) return [];
+    return allLinks.filter(l => l.sourceId === hit.sourceId && l.targetId === hit.targetId);
   }
 
   startDrag(): void {

@@ -10,7 +10,7 @@ export interface DrawOptions {
   nodes: SimulationNode[];
   links: SimulationLink[];
   hoveredNode: SimulationNode | null;
-  hoveredEdge: SimulationLink | null;
+  hoveredEdgeGroup: SimulationLink[] | null;
   showLabels: boolean;
   filterText: string;
 }
@@ -18,18 +18,19 @@ export interface DrawOptions {
 @Injectable()
 export class CanvasRendererService {
   draw(opts: DrawOptions): void {
-    const { ctx, width, height, transform, nodes, links, hoveredNode: hn, hoveredEdge: he, showLabels, filterText } = opts;
+    const { ctx, width, height, transform, nodes, links, hoveredNode: hn, hoveredEdgeGroup: he, showLabels, filterText } = opts;
 
     ctx.clearRect(0, 0, width, height);
     ctx.save();
     ctx.translate(transform.x, transform.y);
     ctx.scale(transform.k, transform.k);
 
-    const { highlightNodes, highlightEdges } = this.buildHighlightSets(hn, he, links);
+    const { highlightNodes, highlightEdgeIds } = this.buildHighlightSets(hn, he, links);
     const isHighlightMode = highlightNodes.size > 0;
     const concealedNodes = this.buildConcealedSet(nodes, filterText);
+    const linkGroups = this.groupLinks(links);
 
-    this.drawLinks(ctx, links, concealedNodes, highlightEdges, isHighlightMode, he);
+    this.drawLinks(ctx, linkGroups, concealedNodes, highlightEdgeIds, isHighlightMode, he);
     this.drawNodes(ctx, nodes, concealedNodes, highlightNodes, isHighlightMode, hn, showLabels);
 
     ctx.restore();
@@ -45,13 +46,28 @@ export class CanvasRendererService {
     }
   }
 
+  // Group links by directed node pair (sourceId|targetId)
+  private groupLinks(links: SimulationLink[]): Map<string, SimulationLink[]> {
+    const groups = new Map<string, SimulationLink[]>();
+    for (const link of links) {
+      const key = `${link.sourceId}|${link.targetId}`;
+      const group = groups.get(key);
+      if (group) {
+        group.push(link);
+      } else {
+        groups.set(key, [link]);
+      }
+    }
+    return groups;
+  }
+
   private buildHighlightSets(
     hn: SimulationNode | null,
-    he: SimulationLink | null,
+    he: SimulationLink[] | null,
     links: SimulationLink[]
-  ): { highlightNodes: Set<SimulationNode>; highlightEdges: Set<SimulationLink> } {
+  ): { highlightNodes: Set<SimulationNode>; highlightEdgeIds: Set<string> } {
     const highlightNodes = new Set<SimulationNode>();
-    const highlightEdges = new Set<SimulationLink>();
+    const highlightEdgeIds = new Set<string>(); // keyed by sourceId|targetId pair
 
     if (hn) {
       highlightNodes.add(hn);
@@ -59,18 +75,19 @@ export class CanvasRendererService {
         const s = link.source as unknown as SimulationNode;
         const t = link.target as unknown as SimulationNode;
         if (s === hn || t === hn) {
-          highlightEdges.add(link);
+          highlightEdgeIds.add(`${link.sourceId}|${link.targetId}`);
           highlightNodes.add(s);
           highlightNodes.add(t);
         }
       }
-    } else if (he) {
-      highlightEdges.add(he);
-      highlightNodes.add(he.source as unknown as SimulationNode);
-      highlightNodes.add(he.target as unknown as SimulationNode);
+    } else if (he && he.length > 0) {
+      const first = he[0];
+      highlightEdgeIds.add(`${first.sourceId}|${first.targetId}`);
+      highlightNodes.add(first.source as unknown as SimulationNode);
+      highlightNodes.add(first.target as unknown as SimulationNode);
     }
 
-    return { highlightNodes, highlightEdges };
+    return { highlightNodes, highlightEdgeIds };
   }
 
   private buildConcealedSet(nodes: SimulationNode[], filterText: string): Set<SimulationNode> {
@@ -90,33 +107,41 @@ export class CanvasRendererService {
 
   private drawLinks(
     ctx: CanvasRenderingContext2D,
-    links: SimulationLink[],
+    linkGroups: Map<string, SimulationLink[]>,
     concealedNodes: Set<SimulationNode>,
-    highlightEdges: Set<SimulationLink>,
+    highlightEdgeIds: Set<string>,
     isHighlightMode: boolean,
-    hoveredEdge: SimulationLink | null
+    hoveredGroup: SimulationLink[] | null
   ): void {
+    const hoveredKey = hoveredGroup && hoveredGroup.length > 0
+      ? `${hoveredGroup[0].sourceId}|${hoveredGroup[0].targetId}`
+      : null;
+
     ctx.lineCap = 'round';
-    for (const link of links) {
-      const source = link.source as unknown as SimulationNode;
-      const target = link.target as unknown as SimulationNode;
+    for (const [key, group] of linkGroups) {
+      const representative = group[0];
+      const source = representative.source as unknown as SimulationNode;
+      const target = representative.target as unknown as SimulationNode;
+
       if (concealedNodes.has(source) || concealedNodes.has(target)) continue;
       if (source.x === undefined || source.y === undefined || target.x === undefined || target.y === undefined) continue;
 
-      const isHighlighted = highlightEdges.has(link);
+      const isHovered = key === hoveredKey;
+      const isHighlighted = highlightEdgeIds.has(key);
       ctx.globalAlpha = isHighlightMode && !isHighlighted ? 0.1 : 1.0;
+
       ctx.beginPath();
       ctx.moveTo(source.x, source.y);
       ctx.lineTo(target.x, target.y);
 
-      if (hoveredEdge === link) {
+      if (isHovered) {
         ctx.strokeStyle = '#555';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 2 + group.length + 2; // slightly thicker on hover
         ctx.shadowColor = 'rgba(0,0,0,0.3)';
         ctx.shadowBlur = 4;
       } else {
         ctx.strokeStyle = '#999';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1 + group.length; // 2 for single edge, 3 for two, etc.
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
       }

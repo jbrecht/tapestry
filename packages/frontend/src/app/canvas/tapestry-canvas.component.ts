@@ -27,18 +27,18 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
   private transform: d3.ZoomTransform = d3.zoomIdentity;
 
   protected hoveredNode = signal<SimulationNode | null>(null);
-  protected hoveredEdge = signal<SimulationLink | null>(null);
+  protected hoveredEdgeGroup = signal<SimulationLink[] | null>(null);
   protected showLabels = signal<boolean>(true);
   protected graphDensity = signal<number>(50);
   protected filterText = signal<string>('');
   protected mousePosition = { x: 0, y: 0 };
 
-  protected edgeSource(edge: SimulationLink): SimulationNode {
-    return edge.source as unknown as SimulationNode;
+  protected edgeGroupSource(group: SimulationLink[]): SimulationNode {
+    return group[0].source as unknown as SimulationNode;
   }
 
-  protected edgeTarget(edge: SimulationLink): SimulationNode {
-    return edge.target as unknown as SimulationNode;
+  protected edgeGroupTarget(group: SimulationLink[]): SimulationNode {
+    return group[0].target as unknown as SimulationNode;
   }
 
   constructor() {
@@ -107,7 +107,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
       nodes: this.simulation.nodes,
       links: this.simulation.links,
       hoveredNode: this.hoveredNode(),
-      hoveredEdge: this.hoveredEdge(),
+      hoveredEdgeGroup: this.hoveredEdgeGroup(),
       showLabels: this.showLabels(),
       filterText: this.filterText()
     });
@@ -137,7 +137,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
       .on('zoom', event => {
         this.transform = event.transform;
         this.hoveredNode.set(null);
-        this.hoveredEdge.set(null);
+        this.hoveredEdgeGroup.set(null);
         this.draw();
       });
     d3.select(canvas).call(zoomBehavior);
@@ -192,13 +192,14 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
 
     const node = this.simulation.findNodeAt(worldX, worldY) ?? null;
     this.hoveredNode.set(node);
-    this.hoveredEdge.set(node ? null : (this.simulation.findEdgeAt(worldX, worldY) ?? null));
+    const edgeGroup = node ? [] : this.simulation.findEdgesAt(worldX, worldY);
+    this.hoveredEdgeGroup.set(edgeGroup.length > 0 ? edgeGroup : null);
     this.draw();
   };
 
   private onMouseOut = (): void => {
     this.hoveredNode.set(null);
-    this.hoveredEdge.set(null);
+    this.hoveredEdgeGroup.set(null);
     this.draw();
   };
 }
