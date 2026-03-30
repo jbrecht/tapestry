@@ -43,10 +43,10 @@ The chat box is not the right place for source material. Ingestion is a separate
 
 - [x] **Extract panel** — "Extract" tab in the chat drawer; text is sent to `POST /extract` without chat history
 - [x] **`POST /extract` endpoint** — dedicated route reusing the extractor; no chat history in prompt; returns graph delta + summary string
-- [ ] **Document upload** — accept `.txt`, `.md`, `.pdf` files in the extract panel; PDF text extraction on the backend
+- [x] **Document upload** — accept `.txt`, `.md`, `.pdf` files in the extract panel; PDF text extraction on the backend via pdf-parse; `POST /extract-file` multipart endpoint
 - [x] **URL ingestion** — "From URL" mode in the Extract tab; backend fetches, strips HTML (prefers article/main content), chunks and extracts; works well with Wikipedia and open articles
 - [x] **Chunking for large documents** — 8000-char overlapping chunks processed sequentially; nearly 2x node yield on test (32 → 60 nodes, 65 edges from History of Chicago article)
-- [ ] **Improve extraction density** — chunking helps but still under-extracts; tune prompt to be more aggressive; consider a second "link" pass after all chunks to find cross-chunk relationships
+- [x] **Improve extraction density** — prompt tuned to be more aggressive ("extract EVERY entity", "capture even weak connections"); link pass added after chunked processing to find cross-document relationships
 
 ---
 
@@ -64,7 +64,7 @@ The chat box is not the right place for source material. Ingestion is a separate
 ## Project Management
 
 - [x] **Project delete** — already exists in the project switcher menu
-- [ ] **Project duplication** — clone an existing project as a starting point
+- [x] **Project duplication** — clone an existing project as a starting point; "Duplicate Project" in project menu; copies nodes, edges, and chat history
 
 ---
 

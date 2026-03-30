@@ -144,15 +144,17 @@ export async function extractionNode(state: typeof TapestryState.State) {
   const model = new ChatOpenAI({ modelName: "gpt-4o", temperature: 0 });
   const structuredModel = model.withStructuredOutput(TapestryExtractionSchema, { name: "extract_tapestry_v2", strict: true });
 
-  const systemPrompt = `You are the Loom. Weave the input into the current Knowledge Graph.
+  const systemPrompt = `You are the Loom. Extract ALL entities and relationships from the text into the knowledge graph. Be exhaustive — it is better to extract too much than to miss something.
+
     Current Nodes: ${JSON.stringify(sanitizeForPrompt(state.nodes))}
 
     Rules:
-    1. Entity Resolution: If an entity exists (check 'label'), do NOT create a new node.
-    2. Attributes: Add new info to 'attributes' (must use 'startTime' and 'endTime' for Events). NEVER extract an absolute date or time as a standalone node. Dates and times must ALWAYS be attributes. DO NOT USE a 'timestamp' attribute.
-    3. Links: Create edges between nodes using labels.
-    4. Follow-up: Ask the user a question to gather more information about the graph. Focus on missing connections or details. Do not ask if they want to know more.
-    5. Deletions: If the user says a relationship doesn't exist or is not true (e.g., 'X is not Y'), put it in 'edgesToRemove'. Do NOT create an edge with a 'NOT_' predicate.`;
+    1. Extract EVERY named entity: every person, organization, place, concept, object, and event mentioned — including minor figures and supporting details.
+    2. Entity Resolution: If an entity already exists (match label case-insensitively), UPDATE it with new info instead of creating a duplicate.
+    3. Attributes: Record all factual details as attributes. Events MUST use 'startTime' and 'endTime'. Dates are ALWAYS attributes — never standalone nodes. No 'timestamp' attribute.
+    4. Links: Create an edge for EVERY relationship mentioned, explicit or implied. Capture even weak connections ("associated with", "contemporary of", "participated in").
+    5. Follow-up: Ask one targeted question to uncover missing connections.
+    6. Deletions: If the user says X is NOT related to Y, put it in 'edgesToRemove'. Never use a 'NOT_' predicate.`;
 
   const result = await structuredModel.invoke([
     new SystemMessage(systemPrompt),

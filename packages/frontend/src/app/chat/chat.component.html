@@ -73,6 +73,7 @@
       <div class="extract-mode-toggle">
         <button class="extract-mode-btn" [class.active]="extractMode() === 'text'" (click)="extractMode.set('text')">Paste text</button>
         <button class="extract-mode-btn" [class.active]="extractMode() === 'url'" (click)="extractMode.set('url')">From URL</button>
+        <button class="extract-mode-btn" [class.active]="extractMode() === 'file'" (click)="extractMode.set('file')">Upload file</button>
       </div>
 
       @if (extractMode() === 'text') {
@@ -97,6 +98,26 @@
         </div>
       }
 
+      @if (extractMode() === 'file') {
+        <div class="extract-file-wrap">
+          <label class="extract-file-label" [class.has-file]="!!extractFile()">
+            <input
+              type="file"
+              accept=".txt,.md,.pdf"
+              (change)="onFileChange($event)"
+              [disabled]="extractStatus() === 'loading'"
+              class="extract-file-input"
+            />
+            <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
+              <path d="M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0L5.205 6.735a.75.75 0 001.09 1.03L9.25 4.636v8.614z" />
+              <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+            </svg>
+            <span>{{ extractFile() ? extractFile()!.name : 'Choose a .txt, .md, or .pdf file' }}</span>
+          </label>
+          <p class="extract-hint">Text and Markdown files are read directly. PDFs are parsed server-side.</p>
+        </div>
+      }
+
       @if (extractStatus() === 'loading') {
         <div class="extract-feedback extract-progress">{{ extractProgress() }}</div>
       }
@@ -109,7 +130,7 @@
       <button
         class="extract-btn"
         (click)="onExtract()"
-        [disabled]="extractStatus() === 'loading' || (extractMode() === 'text' ? !extractText().trim() : !extractUrl().trim())">
+        [disabled]="extractStatus() === 'loading' || (extractMode() === 'text' ? !extractText().trim() : extractMode() === 'url' ? !extractUrl().trim() : !extractFile())">
         {{ extractStatus() === 'loading' ? extractProgress() || 'Extracting…' : 'Extract into graph' }}
       </button>
     </div>

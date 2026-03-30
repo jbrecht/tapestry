@@ -33,9 +33,11 @@ packages/
 ```
 
 ### Backend (`packages/backend/src/`)
-- **`index.ts`** — Express server with two main AI routes:
+- **`index.ts`** — Express server with main AI routes:
   - `POST /weave` — SSE: streams chat reply tokens (`{type:'token'}`) from a fast OpenAI call in parallel with structured graph extraction; ends with `{type:'result'}` containing updated nodes/edges
-  - `POST /extract` — SSE: text or URL ingestion; chunks large text (8000-char windows, 400-char overlap); sends `fetching` → `start` → `progress` → `result` events; URL mode uses `fetchUrlAsText()` which strips HTML via `node-html-parser`, preferring `article`/`main`/`#mw-content-text`
+  - `POST /extract` — SSE: text or URL ingestion; shared via `runChunkedExtraction()` helper; sends `fetching` → `start` → `progress` → `linking` → `result` events; URL mode uses `fetchUrlAsText()` which strips HTML via `node-html-parser`, preferring `article`/`main`/`#mw-content-text`
+  - `POST /extract-file` — SSE: multipart file upload (.txt, .md, .pdf); multer memory storage; PDF text via `PDFParse` from `pdf-parse` v2 class API; feeds into same `runChunkedExtraction()` pipeline
+  - `runChunkedExtraction()` — shared helper: 8000-char overlapping chunks, sequential processing, then a **link pass** that runs one more extraction over all new entity names to find cross-chunk relationships
 - **`extractor.ts`** — LangGraph `extractionNode` using `withStructuredOutput(TapestryExtractionSchema)`; `applyExtractionResult()` merges incoming nodes/edges by label (case-insensitive); `sanitizeForPrompt()` strips internal `_`-prefixed attributes before sending to AI
 - **`schema.ts`** — Zod schema defining the extraction output shape (`TapestryExtractionSchema`)
 - **`db.ts`** — SQLite setup; migrations are additive `ALTER TABLE` statements. **Important:** SQLite rejects `CURRENT_TIMESTAMP` as a default in `ALTER TABLE` — add the column as nullable, then `UPDATE` to backfill

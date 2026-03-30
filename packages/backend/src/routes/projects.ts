@@ -172,6 +172,44 @@ router.put('/:id', (req: AuthRequest, res) => {
   }
 });
 
+// Duplicate Project
+router.post('/:id/duplicate', (req: AuthRequest, res) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+
+  try {
+    const sourceStmt = db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?');
+    const source = sourceStmt.get(id, userId) as any;
+
+    if (!source) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const newId = uuidv4();
+    const newName = `${source.name} (copy)`;
+    const now = new Date().toISOString();
+
+    db.prepare('INSERT INTO projects (id, user_id, name, description, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(newId, userId, newName, source.description ?? '', source.data, now, now);
+
+    // Copy messages
+    const messages = db.prepare('SELECT role, content, created_at FROM messages WHERE project_id = ? ORDER BY created_at ASC').all(id) as any[];
+    if (messages.length > 0) {
+      const insertMsg = db.prepare('INSERT INTO messages (id, project_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)');
+      db.transaction(() => {
+        for (const m of messages) {
+          insertMsg.run(uuidv4(), newId, m.role, m.content, m.created_at);
+        }
+      })();
+    }
+
+    res.status(201).json({ id: newId, name: newName, updated_at: now });
+  } catch (error) {
+    console.error('Duplicate Project Error:', error);
+    res.status(500).json({ error: 'Failed to duplicate project' });
+  }
+});
+
 // Delete Project
 router.delete('/:id', (req: AuthRequest, res) => {
   const { id } = req.params;

@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import multer from "multer";
+import { PDFParse } from "pdf-parse";
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { HumanMessage, BaseMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
 import { ChatOpenAI } from "@langchain/openai";
@@ -10,6 +12,8 @@ import { extractionNode, sanitizeForPrompt } from "./extractor.js";
 import authRoutes from "./routes/auth.js";
 import projectRoutes from "./routes/projects.js";
 import userRoutes from "./routes/users.js";
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 // ── URL → plain text ──────────────────────────────────────────────────────────
 async function fetchUrlAsText(url: string): Promise<string> {
@@ -156,6 +160,65 @@ function chunkText(text: string, maxChars = 8000, overlap = 400): string[] {
   return chunks;
 }
 
+// ── Shared chunked extraction pipeline ───────────────────────────────────────
+async function runChunkedExtraction(
+  sourceText: string,
+  nodes: any[],
+  edges: any[],
+  send: (data: object) => void
+): Promise<void> {
+  const chunks = chunkText(sourceText);
+  console.log(`[extract] Processing ${chunks.length} chunk(s) from ${sourceText.length} chars`);
+  send({ type: 'start', total: chunks.length });
+
+  const prevIds = new Set(nodes.map((n: any) => n.id));
+  let currentNodes = [...nodes];
+  let currentEdges = [...edges];
+
+  for (let i = 0; i < chunks.length; i++) {
+    console.log(`[extract] Chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`);
+    send({ type: 'progress', chunk: i + 1, total: chunks.length });
+    const result = await tapestryApp.invoke({
+      messages: [new HumanMessage(chunks[i])],
+      nodes: currentNodes,
+      edges: currentEdges,
+    });
+    currentNodes = result.nodes;
+    currentEdges = result.edges;
+  }
+
+  // Link pass: after chunking, find cross-document relationships that chunked processing may have missed
+  if (chunks.length > 1) {
+    const newNodes = currentNodes.filter((n: any) => !prevIds.has(n.id));
+    if (newNodes.length >= 2) {
+      console.log(`[extract] Link pass: connecting ${newNodes.length} new nodes`);
+      send({ type: 'linking', message: 'Finding cross-document relationships…' });
+      const entityList = newNodes.map((n: any) => `${n.label} (${n.type})`).join(', ');
+      const result = await tapestryApp.invoke({
+        messages: [new HumanMessage(
+          `Entity link pass for a document processed in ${chunks.length} chunks. ` +
+          `All entities found: ${entityList}. ` +
+          `Find relationships between these entities that may have been missed when processing text in separate chunks. ` +
+          `Focus especially on connections between entities that appear in different parts of the document.`
+        )],
+        nodes: currentNodes,
+        edges: currentEdges,
+      });
+      currentNodes = result.nodes;
+      currentEdges = result.edges;
+    }
+  }
+
+  const addedNodes = currentNodes.filter((n: any) => !prevIds.has(n.id));
+  const addedEdges = currentEdges.length - edges.length;
+  send({
+    type: 'result',
+    nodes: currentNodes,
+    edges: currentEdges,
+    summary: `Processed ${chunks.length} chunk${chunks.length !== 1 ? 's' : ''}. Added ${addedNodes.length} node${addedNodes.length !== 1 ? 's' : ''}, ${Math.max(0, addedEdges)} edge${addedEdges !== 1 ? 's' : ''}.`
+  });
+}
+
 // 4. Extract endpoint — SSE stream, chunked document ingestion (text or URL)
 app.post("/extract", async (req, res) => {
   const { text, url, nodes, edges } = req.body;
@@ -186,34 +249,7 @@ app.post("/extract", async (req, res) => {
       return;
     }
 
-    const chunks = chunkText(sourceText);
-    console.log(`[extract] Processing ${chunks.length} chunk(s) from ${sourceText.length} chars`);
-    send({ type: 'start', total: chunks.length });
-
-    const prevIds = new Set((nodes || []).map((n: any) => n.id));
-    let currentNodes = nodes || [];
-    let currentEdges = edges || [];
-
-    for (let i = 0; i < chunks.length; i++) {
-      console.log(`[extract] Chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`);
-      send({ type: 'progress', chunk: i + 1, total: chunks.length });
-      const result = await tapestryApp.invoke({
-        messages: [new HumanMessage(chunks[i])],
-        nodes: currentNodes,
-        edges: currentEdges,
-      });
-      currentNodes = result.nodes;
-      currentEdges = result.edges;
-    }
-
-    const addedNodes = currentNodes.filter((n: any) => !prevIds.has(n.id));
-    const addedEdges = currentEdges.length - (edges || []).length;
-    send({
-      type: 'result',
-      nodes: currentNodes,
-      edges: currentEdges,
-      summary: `Processed ${chunks.length} chunk${chunks.length !== 1 ? 's' : ''}. Added ${addedNodes.length} node${addedNodes.length !== 1 ? 's' : ''}, ${Math.max(0, addedEdges)} edge${addedEdges !== 1 ? 's' : ''}.`
-    });
+    await runChunkedExtraction(sourceText, nodes || [], edges || [], send);
   } catch (error) {
     console.error("Extract Error:", error);
     send({ type: 'error', message: 'Extraction failed. Check server logs.' });
@@ -222,7 +258,55 @@ app.post("/extract", async (req, res) => {
   }
 });
 
-// 4. Start Server
+// 5. Extract-file endpoint — SSE stream, file upload (txt, md, pdf)
+app.post("/extract-file", upload.single('file'), async (req: any, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+  try {
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) {
+      send({ type: 'error', message: 'No file uploaded.' });
+      res.end();
+      return;
+    }
+
+    const nodes = req.body.nodes ? JSON.parse(req.body.nodes) : [];
+    const edges = req.body.edges ? JSON.parse(req.body.edges) : [];
+
+    let sourceText: string;
+    const filename = file.originalname.toLowerCase();
+
+    if (filename.endsWith('.pdf') || file.mimetype === 'application/pdf') {
+      send({ type: 'fetching', message: `Reading PDF: ${file.originalname}…` });
+      const parser = new PDFParse({ data: file.buffer });
+      const result = await parser.getText();
+      sourceText = result.text;
+      console.log(`[extract-file] PDF parsed: ${sourceText.length} chars`);
+    } else {
+      // .txt, .md, and any other text format
+      sourceText = file.buffer.toString('utf-8');
+      console.log(`[extract-file] Text file read: ${sourceText.length} chars`);
+    }
+
+    if (!sourceText.trim()) {
+      send({ type: 'error', message: 'Could not extract text from file.' });
+      res.end();
+      return;
+    }
+
+    await runChunkedExtraction(sourceText, nodes, edges, send);
+  } catch (error) {
+    console.error("Extract File Error:", error);
+    send({ type: 'error', message: 'File extraction failed. Check server logs.' });
+  } finally {
+    res.end();
+  }
+});
+
+// 6. Start Server
 app.listen(PORT, () => {
   console.log(`🧶 Tapestry server spinning on port ${PORT}`);
 });

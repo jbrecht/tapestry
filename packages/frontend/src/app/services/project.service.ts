@@ -51,4 +51,8 @@ export class ProjectService {
   deleteProject(id: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`, { headers: this.getHeaders() });
   }
+
+  duplicateProject(id: string): Observable<Project> {
+    return this.http.post<Project>(`${this.apiUrl}/${id}/duplicate`, {}, { headers: this.getHeaders() });
+  }
 }

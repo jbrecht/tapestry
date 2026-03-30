@@ -37,30 +37,47 @@ export class ChatComponent {
   protected activeTab = signal<'chat' | 'extract'>('chat');
 
   // ── Extract tab ────────────────────────────────────────────────────────────
-  protected extractMode = signal<'text' | 'url'>('text');
+  protected extractMode = signal<'text' | 'url' | 'file'>('text');
   protected extractText = signal('');
   protected extractUrl = signal('');
+  protected extractFile = signal<File | null>(null);
   protected extractStatus = signal<'idle' | 'loading' | 'done' | 'error'>('idle');
   protected extractSummary = signal('');
   protected extractProgress = signal('');
+
+  protected onFileChange(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.extractFile.set(file);
+  }
 
   protected async onExtract() {
     if (this.extractStatus() === 'loading') return;
     const mode = this.extractMode();
     const text = mode === 'text' ? this.extractText().trim() : '';
     const url = mode === 'url' ? this.extractUrl().trim() : '';
-    if (!text && !url) return;
+    const file = mode === 'file' ? this.extractFile() : null;
+    if (!text && !url && !file) return;
 
     this.extractStatus.set('loading');
     this.extractSummary.set('');
-    this.extractProgress.set(url ? `Fetching ${url}…` : 'Starting…');
+    this.extractProgress.set(url ? `Fetching ${url}…` : file ? `Reading ${file.name}…` : 'Starting…');
 
     try {
-      const response = await fetch(`${environment.apiUrl}/extract`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text || undefined, url: url || undefined, nodes: this.store.nodes(), edges: this.store.edges() }),
-      });
+      let response: Response;
+
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('nodes', JSON.stringify(this.store.nodes()));
+        formData.append('edges', JSON.stringify(this.store.edges()));
+        response = await fetch(`${environment.apiUrl}/extract-file`, { method: 'POST', body: formData });
+      } else {
+        response = await fetch(`${environment.apiUrl}/extract`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text || undefined, url: url || undefined, nodes: this.store.nodes(), edges: this.store.edges() }),
+        });
+      }
 
       if (!response.ok || !response.body) throw new Error('Bad response');
 
@@ -84,12 +101,15 @@ export class ChatComponent {
             this.extractProgress.set(`Processing ${event.total} chunk${event.total !== 1 ? 's' : ''}…`);
           } else if (event.type === 'progress') {
             this.extractProgress.set(`Chunk ${event.chunk} of ${event.total}…`);
+          } else if (event.type === 'linking') {
+            this.extractProgress.set(event.message);
           } else if (event.type === 'result') {
             this.store.updateGraph(event.nodes, event.edges);
             this.extractSummary.set(event.summary);
             this.extractStatus.set('done');
             this.extractText.set('');
             this.extractUrl.set('');
+            this.extractFile.set(null);
             this.extractProgress.set('');
           } else if (event.type === 'error') {
             this.extractSummary.set(event.message);

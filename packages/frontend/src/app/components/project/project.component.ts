@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { TapestryStore } from '../../store/tapestry.store';
+import { ProjectService } from '../../services/project.service';
 
 import { MatDialog } from '@angular/material/dialog';
 import { ProjectDeleteDialogComponent } from './project-delete-dialog.component';
@@ -27,6 +28,7 @@ import { ProjectEditDialogComponent, ProjectEditDialogData } from './project-edi
 export class ProjectComponent {
   store = inject(TapestryStore);
   dialog = inject(MatDialog);
+  private projectService = inject(ProjectService);
 
   openCreateDialog() {
     const dialogRef = this.dialog.open(ProjectCreateDialogComponent, {
@@ -64,6 +66,18 @@ export class ProjectComponent {
       if (result) {
         this.store.updateProjectMeta(result.name, result.description);
       }
+    });
+  }
+
+  onDuplicateProject() {
+    const projectId = this.store.projectId();
+    if (!projectId) return;
+    this.projectService.duplicateProject(projectId).subscribe({
+      next: (project) => {
+        this.store.loadProjectList();
+        this.store.switchProject(project.id);
+      },
+      error: (err) => console.error('Duplicate failed', err),
     });
   }
 

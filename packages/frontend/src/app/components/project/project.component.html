@@ -13,6 +13,10 @@
     <mat-icon>edit</mat-icon>
     <span>Edit Project…</span>
   </button>
+  <button mat-menu-item (click)="onDuplicateProject()" [disabled]="!store.projectId()">
+    <mat-icon>content_copy</mat-icon>
+    <span>Duplicate Project</span>
+  </button>
 
   <mat-divider />
 
