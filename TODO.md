@@ -44,7 +44,7 @@ The chat box is not the right place for source material. Ingestion is a separate
 - [x] **Extract panel** — "Extract" tab in the chat drawer; text is sent to `POST /extract` without chat history
 - [x] **`POST /extract` endpoint** — dedicated route reusing the extractor; no chat history in prompt; returns graph delta + summary string
 - [ ] **Document upload** — accept `.txt`, `.md`, `.pdf` files in the extract panel; PDF text extraction on the backend
-- [ ] **URL ingestion** — paste a URL (Wikipedia, article, etc.) and have the backend fetch + extract from it
+- [x] **URL ingestion** — "From URL" mode in the Extract tab; backend fetches, strips HTML (prefers article/main content), chunks and extracts; works well with Wikipedia and open articles
 - [x] **Chunking for large documents** — 8000-char overlapping chunks processed sequentially; nearly 2x node yield on test (32 → 60 nodes, 65 edges from History of Chicago article)
 - [ ] **Improve extraction density** — chunking helps but still under-extracts; tune prompt to be more aggressive; consider a second "link" pass after all chunks to find cross-chunk relationships
 
@@ -71,5 +71,5 @@ The chat box is not the right place for source material. Ingestion is a separate
 ## Infrastructure
 
 - [ ] **Deploy pipeline** — CI/CD for building and deploying the app (e.g. Railway, Fly, or Render for backend; Vercel/Netlify for frontend)
-- [ ] **Export to CSV** — export the node table to `.csv` for use in spreadsheets
+- [x] **Export to CSV** — CSV button in top bar exports nodes + edges as a combined file (two sections); attribute columns are discovered dynamically across all nodes
 - [ ] **Export to GraphML / JSON-LD** — interoperability with other graph tools

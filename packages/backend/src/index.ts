@@ -3,12 +3,57 @@ import cors from "cors";
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { HumanMessage, BaseMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
 import { ChatOpenAI } from "@langchain/openai";
+import { parse as parseHtml } from "node-html-parser";
 import { FRONTEND_URL, PORT } from "./config.js";
 import { TapestryState } from "./state.js";
 import { extractionNode, sanitizeForPrompt } from "./extractor.js";
 import authRoutes from "./routes/auth.js";
 import projectRoutes from "./routes/projects.js";
 import userRoutes from "./routes/users.js";
+
+// ── URL → plain text ──────────────────────────────────────────────────────────
+async function fetchUrlAsText(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Tapestry/1.0 (knowledge graph; contact via github.com/tapestry)',
+      'Accept': 'text/html,application/xhtml+xml',
+    },
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} fetching ${url}`);
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  const raw = await response.text();
+
+  // If it's plain text (e.g. .txt, .md), return as-is
+  if (!contentType.includes('html')) return raw;
+
+  const root = parseHtml(raw);
+
+  // Remove non-content elements
+  for (const tag of ['script', 'style', 'nav', 'header', 'footer', 'aside', 'noscript', 'figure']) {
+    root.querySelectorAll(tag).forEach(el => el.remove());
+  }
+
+  // Prefer article/main content if present
+  const article = root.querySelector('article') ?? root.querySelector('main') ?? root.querySelector('#mw-content-text') ?? root.querySelector('.mw-body-content');
+  const textRoot = article ?? root;
+
+  // Convert to readable text: paragraphs separated by newlines
+  const text = textRoot.innerText
+    .replace(/\n{3,}/g, '\n\n')   // collapse excess blank lines
+    .replace(/[ \t]+/g, ' ')       // collapse spaces
+    .trim();
+
+  if (text.length < 200) {
+    throw new Error('Page returned too little usable text — it may be paywalled or bot-protected.');
+  }
+
+  return text;
+}
 
 const app = express();
 
@@ -111,12 +156,9 @@ function chunkText(text: string, maxChars = 8000, overlap = 400): string[] {
   return chunks;
 }
 
-// 4. Extract endpoint — SSE stream, chunked document ingestion
+// 4. Extract endpoint — SSE stream, chunked document ingestion (text or URL)
 app.post("/extract", async (req, res) => {
-  const { text, nodes, edges } = req.body;
-  if (!text || !text.trim()) {
-    return res.status(400).json({ error: "No text provided." });
-  }
+  const { text, url, nodes, edges } = req.body;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -124,8 +166,28 @@ app.post("/extract", async (req, res) => {
   const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`);
 
   try {
-    const chunks = chunkText(text.trim());
-    console.log(`[extract] Processing ${chunks.length} chunk(s) from ${text.length} chars`);
+    let sourceText: string;
+
+    if (url && url.trim()) {
+      send({ type: 'fetching', message: `Fetching ${url}…` });
+      try {
+        sourceText = await fetchUrlAsText(url.trim());
+        console.log(`[extract] Fetched ${url} → ${sourceText.length} chars`);
+      } catch (err: any) {
+        send({ type: 'error', message: err.message ?? 'Failed to fetch URL.' });
+        res.end();
+        return;
+      }
+    } else if (text && text.trim()) {
+      sourceText = text.trim();
+    } else {
+      send({ type: 'error', message: 'Provide either text or a URL.' });
+      res.end();
+      return;
+    }
+
+    const chunks = chunkText(sourceText);
+    console.log(`[extract] Processing ${chunks.length} chunk(s) from ${sourceText.length} chars`);
     send({ type: 'start', total: chunks.length });
 
     const prevIds = new Set((nodes || []).map((n: any) => n.id));

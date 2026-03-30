@@ -76,6 +76,51 @@ export class TapestryComponent implements OnDestroy {
     }
   }
 
+  exportCsv() {
+    const nodes = this.store.nodes();
+    const edges = this.store.edges();
+
+    // Collect all attribute keys across all nodes (excluding internal _ keys and coordinates)
+    const attrKeys = new Set<string>();
+    for (const node of nodes) {
+      for (const key of Object.keys(node.attributes)) {
+        if (!key.startsWith('_') && key !== 'coordinates') attrKeys.add(key);
+      }
+    }
+    const attrCols = [...attrKeys];
+
+    const escape = (v: any) => {
+      const s = v == null ? '' : String(v);
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+
+    // Nodes sheet
+    const nodeHeaders = ['id', 'label', 'type', 'description', ...attrCols];
+    const nodeRows = nodes.map(n => [
+      n.id, n.label, n.type, n.description ?? '',
+      ...attrCols.map(k => n.attributes[k] ?? ''),
+    ].map(escape).join(','));
+    const nodesCsv = [nodeHeaders.join(','), ...nodeRows].join('\n');
+
+    // Edges sheet
+    const edgeHeaders = ['id', 'sourceId', 'sourceLabel', 'targetId', 'targetLabel', 'predicate'];
+    const nodeMap = new Map(nodes.map(n => [n.id, n.label]));
+    const edgeRows = edges.map(e => [
+      e.id, e.sourceId, nodeMap.get(e.sourceId) ?? '', e.targetId, nodeMap.get(e.targetId) ?? '', e.predicate,
+    ].map(escape).join(','));
+    const edgesCsv = [edgeHeaders.join(','), ...edgeRows].join('\n');
+
+    const combined = `NODES\n${nodesCsv}\n\nEDGES\n${edgesCsv}`;
+    const blob = new Blob([combined], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = this.document.createElement('a');
+    a.href = url;
+    a.download = `${this.store.projectName().replace(/\s+/g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   exportJson() {
     const data = { nodes: this.store.nodes(), edges: this.store.edges() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

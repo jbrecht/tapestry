@@ -70,13 +70,33 @@
 
   @if (activeTab() === 'extract') {
     <div class="extract-panel">
-      <p class="extract-hint">Paste an article, document, or any text. Entities and relationships will be extracted directly into your graph — without adding to the chat history.</p>
-      <textarea
-        class="extract-textarea"
-        [(ngModel)]="extractText"
-        placeholder="Paste text here…"
-        [disabled]="extractStatus() === 'loading'"
-      ></textarea>
+      <div class="extract-mode-toggle">
+        <button class="extract-mode-btn" [class.active]="extractMode() === 'text'" (click)="extractMode.set('text')">Paste text</button>
+        <button class="extract-mode-btn" [class.active]="extractMode() === 'url'" (click)="extractMode.set('url')">From URL</button>
+      </div>
+
+      @if (extractMode() === 'text') {
+        <textarea
+          class="extract-textarea"
+          [(ngModel)]="extractText"
+          placeholder="Paste an article, Wikipedia content, notes, or any text…"
+          [disabled]="extractStatus() === 'loading'"
+        ></textarea>
+      }
+
+      @if (extractMode() === 'url') {
+        <div class="extract-url-wrap">
+          <input
+            class="extract-url-input"
+            [(ngModel)]="extractUrl"
+            placeholder="https://en.wikipedia.org/wiki/…"
+            (keydown.enter)="onExtract()"
+            [disabled]="extractStatus() === 'loading'"
+          />
+          <p class="extract-hint">The page will be fetched server-side and its text extracted into your graph. Works best with Wikipedia, news articles, and plain text pages. Paywalled or bot-protected sites may fail.</p>
+        </div>
+      }
+
       @if (extractStatus() === 'loading') {
         <div class="extract-feedback extract-progress">{{ extractProgress() }}</div>
       }
@@ -89,7 +109,7 @@
       <button
         class="extract-btn"
         (click)="onExtract()"
-        [disabled]="!extractText().trim() || extractStatus() === 'loading'">
+        [disabled]="extractStatus() === 'loading' || (extractMode() === 'text' ? !extractText().trim() : !extractUrl().trim())">
         {{ extractStatus() === 'loading' ? extractProgress() || 'Extracting…' : 'Extract into graph' }}
       </button>
     </div>

@@ -37,23 +37,29 @@ export class ChatComponent {
   protected activeTab = signal<'chat' | 'extract'>('chat');
 
   // ── Extract tab ────────────────────────────────────────────────────────────
+  protected extractMode = signal<'text' | 'url'>('text');
   protected extractText = signal('');
+  protected extractUrl = signal('');
   protected extractStatus = signal<'idle' | 'loading' | 'done' | 'error'>('idle');
   protected extractSummary = signal('');
   protected extractProgress = signal('');
 
   protected async onExtract() {
-    const text = this.extractText().trim();
-    if (!text || this.extractStatus() === 'loading') return;
+    if (this.extractStatus() === 'loading') return;
+    const mode = this.extractMode();
+    const text = mode === 'text' ? this.extractText().trim() : '';
+    const url = mode === 'url' ? this.extractUrl().trim() : '';
+    if (!text && !url) return;
+
     this.extractStatus.set('loading');
     this.extractSummary.set('');
-    this.extractProgress.set('Starting…');
+    this.extractProgress.set(url ? `Fetching ${url}…` : 'Starting…');
 
     try {
       const response = await fetch(`${environment.apiUrl}/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, nodes: this.store.nodes(), edges: this.store.edges() }),
+        body: JSON.stringify({ text: text || undefined, url: url || undefined, nodes: this.store.nodes(), edges: this.store.edges() }),
       });
 
       if (!response.ok || !response.body) throw new Error('Bad response');
@@ -72,7 +78,9 @@ export class ChatComponent {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const event = JSON.parse(line.slice(6));
-          if (event.type === 'start') {
+          if (event.type === 'fetching') {
+            this.extractProgress.set(event.message);
+          } else if (event.type === 'start') {
             this.extractProgress.set(`Processing ${event.total} chunk${event.total !== 1 ? 's' : ''}…`);
           } else if (event.type === 'progress') {
             this.extractProgress.set(`Chunk ${event.chunk} of ${event.total}…`);
@@ -81,6 +89,7 @@ export class ChatComponent {
             this.extractSummary.set(event.summary);
             this.extractStatus.set('done');
             this.extractText.set('');
+            this.extractUrl.set('');
             this.extractProgress.set('');
           } else if (event.type === 'error') {
             this.extractSummary.set(event.message);

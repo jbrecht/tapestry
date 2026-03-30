@@ -76,6 +76,60 @@
   &:disabled { opacity: 0.5; }
 }
 
+.extract-mode-toggle {
+  display: flex;
+  border: 1px solid var(--border-color, #444);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.extract-mode-btn {
+  flex: 1;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #888);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  &.active {
+    background: var(--accent-color, #f5a623);
+    color: #fff;
+  }
+
+  &:not(.active):hover {
+    background: var(--bg-tertiary, #333);
+    color: var(--text-primary, #eee);
+  }
+}
+
+.extract-url-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.extract-url-input {
+  width: 100%;
+  background: var(--bg-tertiary, #2a2a3a);
+  color: var(--text-primary, #eee);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus { border-color: var(--accent-color, #f5a623); }
+  &::placeholder { color: var(--text-secondary, #666); }
+  &:disabled { opacity: 0.5; }
+}
+
 .extract-btn {
   padding: 10px;
   background: var(--accent-color, #f5a623);

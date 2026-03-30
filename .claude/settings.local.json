@@ -4,7 +4,9 @@
       "Bash(grep -n \"SECURITY\\\\|TODO\\\\|FIXME\\\\|BUG\\\\|XXX\\\\|HACK\" /Users/JohnBrecht/dev/tapestry/packages/backend/src/*.ts /Users/JohnBrecht/dev/tapestry/packages/frontend/src/app/**/*.ts)",
       "Bash(grep:*)",
       "Bash(npx tsc:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npm install:*)",
+      "Bash(node:*)"
     ]
   }
 }

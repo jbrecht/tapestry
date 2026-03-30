@@ -27,6 +27,7 @@
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "node-html-parser": "^7.1.0",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
   },
