@@ -12,6 +12,13 @@ A living list of planned work, roughly ordered by priority.
 
 ---
 
+## Graph Filtering
+
+- [x] **Degree filter** — "Min connections" slider (1–8) in canvas header; hides nodes below the threshold; label highlights amber when active
+- [x] **K-core / Backbone** — "Backbone" checkbox runs 2-core decomposition; iteratively removes all leaf-like nodes until only the densely-connected core remains; mutually exclusive with degree filter
+
+---
+
 ## Core UX
 
 - [x] **Import JSON** — upload button in top bar merges nodes/edges from a `.json` file (deduplicates by ID)

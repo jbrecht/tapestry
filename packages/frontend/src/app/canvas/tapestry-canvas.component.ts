@@ -32,6 +32,8 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
   protected hoveredEdgeGroup = signal<SimulationLink[] | null>(null);
   protected showLabels = signal<boolean>(true);
   protected graphDensity = signal<number>(50);
+  protected minDegree = signal<number>(1);
+  protected kCoreDepth = signal<number>(0);
   protected mousePosition = { x: 0, y: 0 };
   protected multiSelectedIds = signal<Set<string>>(new Set());
   protected readonly emptySet = new Set<string>();
@@ -51,7 +53,9 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
       const nodes = this.store.nodes();
       const edges = this.store.edges();
       const perspective = this.store.activePerspective();
-      if (this.ctx) this.handlePerspective(nodes, edges, perspective);
+      const minDeg = this.minDegree();
+      const kDepth = this.kCoreDepth();
+      if (this.ctx) this.handlePerspective(this.applyGraphFilters(nodes, edges, minDeg, kDepth), perspective);
     });
 
     effect(() => {
@@ -97,7 +101,10 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     canvas.addEventListener('click', this.onClick);
     document.addEventListener('keydown', this.onDocKeyDown);
 
-    this.handlePerspective(this.store.nodes(), this.store.edges(), this.store.activePerspective());
+    this.handlePerspective(
+      this.applyGraphFilters(this.store.nodes(), this.store.edges(), this.minDegree(), this.kCoreDepth()),
+      this.store.activePerspective()
+    );
   }
 
   ngOnDestroy() {
@@ -112,7 +119,61 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     document.removeEventListener('keydown', this.onDocKeyDown);
   }
 
-  private handlePerspective(nodes: TapestryNode[], edges: TapestryEdge[], perspective: PerspectiveType): void {
+  private applyGraphFilters(
+    nodes: TapestryNode[],
+    edges: TapestryEdge[],
+    minDeg: number,
+    kDepth: number
+  ): { nodes: TapestryNode[]; edges: TapestryEdge[] } {
+    let filteredNodes = nodes;
+    let filteredEdges = edges;
+
+    if (kDepth >= 2) {
+      // k-core decomposition: iteratively remove nodes with fewer than k connections
+      const degree = new Map<string, number>();
+      const inSet = new Set(nodes.map(n => n.id));
+      for (const e of edges) {
+        if (inSet.has(e.sourceId) && inSet.has(e.targetId)) {
+          degree.set(e.sourceId, (degree.get(e.sourceId) ?? 0) + 1);
+          degree.set(e.targetId, (degree.get(e.targetId) ?? 0) + 1);
+        }
+      }
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const id of inSet) {
+          if ((degree.get(id) ?? 0) < kDepth) {
+            inSet.delete(id);
+            changed = true;
+            for (const e of edges) {
+              if (e.sourceId === id && inSet.has(e.targetId)) {
+                degree.set(e.targetId, (degree.get(e.targetId) ?? 1) - 1);
+              }
+              if (e.targetId === id && inSet.has(e.sourceId)) {
+                degree.set(e.sourceId, (degree.get(e.sourceId) ?? 1) - 1);
+              }
+            }
+          }
+        }
+      }
+      filteredNodes = nodes.filter(n => inSet.has(n.id));
+      filteredEdges = edges.filter(e => inSet.has(e.sourceId) && inSet.has(e.targetId));
+    } else if (minDeg > 1) {
+      // Degree filter: hide nodes below minimum connection count
+      const degree = new Map<string, number>();
+      for (const e of edges) {
+        degree.set(e.sourceId, (degree.get(e.sourceId) ?? 0) + 1);
+        degree.set(e.targetId, (degree.get(e.targetId) ?? 0) + 1);
+      }
+      const keep = new Set(nodes.filter(n => (degree.get(n.id) ?? 0) >= minDeg).map(n => n.id));
+      filteredNodes = nodes.filter(n => keep.has(n.id));
+      filteredEdges = edges.filter(e => keep.has(e.sourceId) && keep.has(e.targetId));
+    }
+
+    return { nodes: filteredNodes, edges: filteredEdges };
+  }
+
+  private handlePerspective(filtered: { nodes: TapestryNode[]; edges: TapestryEdge[] }, perspective: PerspectiveType): void {
     if (perspective !== 'abstract') {
       this.simulation.destroy();
       this.ctx?.clearRect(0, 0, this.width, this.height);
@@ -121,7 +182,7 @@ export class TapestryCanvasComponent implements AfterViewInit, OnDestroy {
     if (!this.simulation.isInitialized) {
       this.simulation.initialize(this.width, this.height, () => this.draw());
     }
-    this.simulation.update(nodes, edges);
+    this.simulation.update(filtered.nodes, filtered.edges);
   }
 
   private draw(): void {
