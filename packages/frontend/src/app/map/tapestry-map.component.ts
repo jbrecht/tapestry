@@ -1,6 +1,7 @@
 import { Component, inject, ChangeDetectionStrategy, viewChild, ElementRef, effect, untracked, OnDestroy, AfterViewInit, signal } from '@angular/core';
 import { TapestryNode, TapestryStore } from '../store/tapestry.store';
 import * as L from 'leaflet';
+import 'leaflet.markercluster';
 
 const COLORS: Record<string, string> = {
   Person: '#ff7f0e',
@@ -8,6 +9,8 @@ const COLORS: Record<string, string> = {
   Place:  '#2ca02c',
   Thing:  '#1f77b4',
 };
+
+const NODE_TYPES = ['Person', 'Place', 'Thing', 'Event'] as const;
 
 interface TileProvider {
   id: string;
@@ -88,16 +91,20 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
 
   private map: L.Map | null = null;
   private tileLayer: L.TileLayer | null = null;
+  private clusterGroup: L.MarkerClusterGroup | null = null; // leaflet.markercluster augments L namespace
   private markers = new Map<string, L.Marker>();
   private initialBoundsSet = false;
 
   protected readonly providers = TILE_PROVIDERS;
+  protected readonly nodeTypes = NODE_TYPES;
   protected activeProviderId = signal<string>('osm');
+  protected hiddenTypes = signal<Set<string>>(new Set());
 
   constructor() {
     effect(() => {
       const nodes = this.store.mapNodes();
-      if (this.map) this.syncMarkers(nodes);
+      const hidden = this.hiddenTypes();
+      if (this.map) this.syncMarkers(nodes.filter(n => !hidden.has(n.type)));
     });
 
     effect(() => {
@@ -120,6 +127,14 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
     this.map = L.map(el, { zoomControl: true }).setView([20, 0], 2);
     this.applyTileProvider('osm');
 
+    this.clusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+    });
+    this.map.addLayer(this.clusterGroup);
+
     this.map.on('click', (e: L.LeafletMouseEvent) => {
       const pinningId = this.store.pinningNodeId();
       if (!pinningId) return;
@@ -131,7 +146,8 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
       this.store.setPinningNode(null);
     });
 
-    this.syncMarkers(this.store.mapNodes());
+    const hidden = this.hiddenTypes();
+    this.syncMarkers(this.store.mapNodes().filter(n => !hidden.has(n.type)));
   }
 
   ngOnDestroy() {
@@ -140,15 +156,14 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
   }
 
   private syncMarkers(nodes: TapestryNode[]) {
-    if (!this.map) return;
-    // untracked: selectedNodeId must not become a dependency of the nodes effect
+    if (!this.map || !this.clusterGroup) return;
     const selectedId = untracked(() => this.store.selectedNodeId());
     const incomingIds = new Set(nodes.map(n => n.id));
 
     // Remove stale markers
     for (const [id, marker] of this.markers) {
       if (!incomingIds.has(id)) {
-        marker.remove();
+        this.clusterGroup.removeLayer(marker);
         this.markers.delete(id);
       }
     }
@@ -174,12 +189,12 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
             const currentId = this.store.selectedNodeId();
             this.store.selectNode(node.id === currentId ? null : node.id);
           });
-        marker.addTo(this.map!);
+        this.clusterGroup.addLayer(marker);
         this.markers.set(node.id, marker);
       }
     }
 
-    // Fit bounds only on initial load — never on subsequent syncs
+    // Fit bounds only on initial load
     if (!this.initialBoundsSet && this.markers.size > 0) {
       const validLatLngs = nodes
         .map(n => n.attributes['coordinates'] as { x: number; y: number } | null)
@@ -193,7 +208,6 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
   }
 
   private updateSelectedMarker(selectedId: string | null) {
-    // untracked: nodes must not become a dependency of the selectedNodeId effect
     const allNodes = untracked(() => this.store.nodes());
 
     for (const [id, marker] of this.markers) {
@@ -227,6 +241,19 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
   protected switchProvider(id: string): void {
     this.activeProviderId.set(id);
     this.applyTileProvider(id);
+  }
+
+  protected toggleType(type: string): void {
+    this.hiddenTypes.update(set => {
+      const next = new Set(set);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }
+
+  protected typeColor(type: string): string {
+    return COLORS[type] ?? COLORS['Thing'];
   }
 
   protected pinningNodeLabel(id: string): string {

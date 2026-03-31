@@ -8,6 +8,21 @@
   }
 </div>
 
+<div class="type-filter">
+  @for (t of nodeTypes; track t) {
+    <button
+      class="type-btn"
+      [class.hidden]="hiddenTypes().has(t)"
+      [style.--type-color]="typeColor(t)"
+      (click)="toggleType(t)"
+      [title]="(hiddenTypes().has(t) ? 'Show' : 'Hide') + ' ' + t + ' nodes'"
+    >
+      <span class="type-dot"></span>
+      {{ t }}
+    </button>
+  }
+</div>
+
 @if (store.pinningNodeId(); as pinId) {
   <div class="pin-banner">
     <svg viewBox="0 0 20 20" fill="currentColor" width="13" height="13">
