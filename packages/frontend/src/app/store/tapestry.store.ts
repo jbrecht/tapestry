@@ -145,6 +145,10 @@ export const TapestryStore = signalStore(
           nodes: [...state.nodes, { ...node, id: crypto.randomUUID() }],
         }));
       },
+      updateGraphSilent(nodes: TapestryNode[], edges: TapestryEdge[]) {
+        // Like updateGraph but skips the undo stack — used for streaming intermediate results
+        patchState(store, { nodes, edges });
+      },
       updateGraph(nodes: TapestryNode[], edges: TapestryEdge[]) {
         patchState(store, state => {
           const existingIds = new Set(state.nodes.map(n => n.id));

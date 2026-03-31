@@ -120,6 +120,13 @@
 
       @if (extractStatus() === 'loading') {
         <div class="extract-feedback extract-progress">{{ extractProgress() }}</div>
+        @if (extractLog().length > 0) {
+          <div class="extract-log">
+            @for (entry of extractLog(); track $index) {
+              <div class="extract-log-entry">{{ entry }}</div>
+            }
+          </div>
+        }
       }
       @if (extractStatus() === 'done') {
         <div class="extract-feedback extract-ok">{{ extractSummary() }}</div>

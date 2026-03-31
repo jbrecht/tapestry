@@ -44,6 +44,7 @@ export class ChatComponent {
   protected extractStatus = signal<'idle' | 'loading' | 'done' | 'error'>('idle');
   protected extractSummary = signal('');
   protected extractProgress = signal('');
+  protected extractLog = signal<string[]>([]);
 
   protected onFileChange(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0] ?? null;
@@ -61,6 +62,7 @@ export class ChatComponent {
     this.extractStatus.set('loading');
     this.extractSummary.set('');
     this.extractProgress.set(url ? `Fetching ${url}…` : file ? `Reading ${file.name}…` : 'Starting…');
+    this.extractLog.set([]);
 
     try {
       let response: Response;
@@ -101,6 +103,15 @@ export class ChatComponent {
             this.extractProgress.set(`Processing ${event.total} chunk${event.total !== 1 ? 's' : ''}…`);
           } else if (event.type === 'progress') {
             this.extractProgress.set(`Chunk ${event.chunk} of ${event.total}…`);
+          } else if (event.type === 'chunk_done') {
+            const byType: Record<string, number> = event.byType ?? {};
+            const pl = (n: number, word: string) => `${n} ${word}${n !== 1 ? 's' : ''}`;
+            const parts = (['Person', 'Place', 'Thing', 'Event'] as const)
+              .filter(t => byType[t])
+              .map(t => pl(byType[t], t));
+            const summary = parts.length > 0 ? parts.join(', ') : 'nothing new';
+            this.extractLog.update(log => [...log, `Chunk ${event.chunk}/${event.total} — ${summary}`]);
+            if (event.nodes) this.store.updateGraphSilent(event.nodes, event.edges);
           } else if (event.type === 'linking') {
             this.extractProgress.set(event.message);
           } else if (event.type === 'result') {

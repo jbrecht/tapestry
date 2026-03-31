@@ -63,7 +63,7 @@ const app = express();
 
 // 1. Middleware
 app.use(cors({ origin: FRONTEND_URL }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Routes
 app.use("/auth", authRoutes);
@@ -178,6 +178,7 @@ async function runChunkedExtraction(
   for (let i = 0; i < chunks.length; i++) {
     console.log(`[extract] Chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`);
     send({ type: 'progress', chunk: i + 1, total: chunks.length });
+    const prevNodeIds = new Set(currentNodes.map((n: any) => n.id));
     const result = await tapestryApp.invoke({
       messages: [new HumanMessage(chunks[i])],
       nodes: currentNodes,
@@ -185,12 +186,20 @@ async function runChunkedExtraction(
     });
     currentNodes = result.nodes;
     currentEdges = result.edges;
+
+    // Count new nodes by type for the progress report
+    const added = currentNodes.filter((n: any) => !prevNodeIds.has(n.id));
+    const byType: Record<string, number> = {};
+    for (const n of added) byType[n.type] = (byType[n.type] ?? 0) + 1;
+    send({ type: 'chunk_done', chunk: i + 1, total: chunks.length, added: added.length, byType, nodes: currentNodes, edges: currentEdges });
   }
 
-  // Link pass: after chunking, find cross-document relationships that chunked processing may have missed
+  // Link pass: after chunking, find cross-document relationships that chunked processing may have missed.
+  // Skip if too many new nodes — the output JSON would exceed model token limits.
+  const LINK_PASS_MAX = 80;
   if (chunks.length > 1) {
     const newNodes = currentNodes.filter((n: any) => !prevIds.has(n.id));
-    if (newNodes.length >= 2) {
+    if (newNodes.length >= 2 && newNodes.length <= LINK_PASS_MAX) {
       console.log(`[extract] Link pass: connecting ${newNodes.length} new nodes`);
       send({ type: 'linking', message: 'Finding cross-document relationships…' });
       const entityList = newNodes.map((n: any) => `${n.label} (${n.type})`).join(', ');
@@ -206,6 +215,8 @@ async function runChunkedExtraction(
       });
       currentNodes = result.nodes;
       currentEdges = result.edges;
+    } else if (newNodes.length > LINK_PASS_MAX) {
+      console.log(`[extract] Link pass skipped — ${newNodes.length} nodes exceeds limit of ${LINK_PASS_MAX}`);
     }
   }
 

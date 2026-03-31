@@ -196,6 +196,27 @@
 .extract-err      { background: #d6272822; color: #d62728; }
 .extract-progress { background: transparent; color: var(--text-secondary, #888); font-style: italic; }
 
+.extract-log {
+  max-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.extract-log-entry {
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+  padding: 2px 4px;
+  border-left: 2px solid var(--border-color, #333);
+
+  &:last-child {
+    color: var(--text-primary, #eee);
+    border-left-color: var(--accent-color, #f5a623);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 .chat-container {

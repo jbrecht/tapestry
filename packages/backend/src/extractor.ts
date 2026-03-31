@@ -144,9 +144,14 @@ export async function extractionNode(state: typeof TapestryState.State) {
   const model = new ChatOpenAI({ modelName: "gpt-4o", temperature: 0 });
   const structuredModel = model.withStructuredOutput(TapestryExtractionSchema, { name: "extract_tapestry_v2", strict: true });
 
+  // Compact node list: just "Label (Type)" — enough for entity resolution, far fewer tokens than full JSON
+  const nodeList = state.nodes.length > 0
+    ? state.nodes.map(n => `${n.label} (${n.type})`).join(', ')
+    : 'none yet';
+
   const systemPrompt = `You are the Loom. Extract ALL entities and relationships from the text into the knowledge graph. Be exhaustive — it is better to extract too much than to miss something.
 
-    Current Nodes: ${JSON.stringify(sanitizeForPrompt(state.nodes))}
+    Existing entities (do not duplicate): ${nodeList}
 
     Rules:
     1. Extract EVERY named entity: every person, organization, place, concept, object, and event mentioned — including minor figures and supporting details.
