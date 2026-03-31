@@ -1,5 +1,13 @@
 <div #mapContainer class="map-container"></div>
 
+<div class="tile-picker">
+  @for (p of providers; track p.id) {
+    <button class="tile-btn" [class.active]="activeProviderId() === p.id" (click)="switchProvider(p.id)">
+      {{ p.name }}
+    </button>
+  }
+</div>
+
 @if (store.pinningNodeId(); as pinId) {
   <div class="pin-banner">
     <svg viewBox="0 0 20 20" fill="currentColor" width="13" height="13">

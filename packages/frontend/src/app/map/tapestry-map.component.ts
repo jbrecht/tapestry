@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, viewChild, ElementRef, effect, untracked, OnDestroy, AfterViewInit } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, viewChild, ElementRef, effect, untracked, OnDestroy, AfterViewInit, signal } from '@angular/core';
 import { TapestryNode, TapestryStore } from '../store/tapestry.store';
 import * as L from 'leaflet';
 
@@ -8,6 +8,52 @@ const COLORS: Record<string, string> = {
   Place:  '#2ca02c',
   Thing:  '#1f77b4',
 };
+
+interface TileProvider {
+  id: string;
+  name: string;
+  url: string;
+  attribution: string;
+  maxZoom: number;
+}
+
+const TILE_PROVIDERS: TileProvider[] = [
+  {
+    id: 'osm',
+    name: 'Street',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  },
+  {
+    id: 'natgeo',
+    name: 'NatGeo',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles © Esri — National Geographic, Esri, DeLorme, NAVTEQ',
+    maxZoom: 16,
+  },
+  {
+    id: 'satellite',
+    name: 'Satellite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles © Esri — Esri, Maxar, GeoEye, Earthstar Geographics',
+    maxZoom: 19,
+  },
+  {
+    id: 'topo',
+    name: 'Topo',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: 'Map data: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, SRTM | Style: © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
+    maxZoom: 17,
+  },
+  {
+    id: 'dark',
+    name: 'Dark',
+    url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
+    attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 20,
+  },
+];
 
 function makeIcon(color: string, selected: boolean): L.DivIcon {
   const size = selected ? 18 : 14;
@@ -41,8 +87,12 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
   private mapRef = viewChild<ElementRef<HTMLDivElement>>('mapContainer');
 
   private map: L.Map | null = null;
+  private tileLayer: L.TileLayer | null = null;
   private markers = new Map<string, L.Marker>();
   private initialBoundsSet = false;
+
+  protected readonly providers = TILE_PROVIDERS;
+  protected activeProviderId = signal<string>('osm');
 
   constructor() {
     effect(() => {
@@ -68,11 +118,7 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
     if (!el) return;
 
     this.map = L.map(el, { zoomControl: true }).setView([20, 0], 2);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    }).addTo(this.map);
+    this.applyTileProvider('osm');
 
     this.map.on('click', (e: L.LeafletMouseEvent) => {
       const pinningId = this.store.pinningNodeId();
@@ -165,6 +211,22 @@ export class TapestryMapComponent implements AfterViewInit, OnDestroy {
         this.map?.panTo([lat, lng], { animate: true });
       }
     }
+  }
+
+  private applyTileProvider(id: string): void {
+    if (!this.map) return;
+    const provider = TILE_PROVIDERS.find(p => p.id === id);
+    if (!provider) return;
+    if (this.tileLayer) this.tileLayer.remove();
+    this.tileLayer = L.tileLayer(provider.url, {
+      attribution: provider.attribution,
+      maxZoom: provider.maxZoom,
+    }).addTo(this.map);
+  }
+
+  protected switchProvider(id: string): void {
+    this.activeProviderId.set(id);
+    this.applyTileProvider(id);
   }
 
   protected pinningNodeLabel(id: string): string {
